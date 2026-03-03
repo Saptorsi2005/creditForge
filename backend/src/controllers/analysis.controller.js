@@ -139,12 +139,18 @@ const getCAMReport = async (req, res, next) => {
         });
       }
 
+      // Get settings for interest rate calculation
+      const settings = await prisma.settings.findFirst({
+        where: { isActive: true },
+      });
+
       // Generate CAM report
       const camData = await camService.generateCAMReport(
         application,
         companyAnalysis,
         aiResearch,
-        riskScore
+        riskScore,
+        settings
       );
 
       camReport = await prisma.camReport.upsert({
@@ -211,11 +217,17 @@ const getCAMPDF = async (req, res, next) => {
         });
       }
 
+      // Get settings for interest rate calculation
+      const settings = await prisma.settings.findFirst({
+        where: { isActive: true },
+      });
+
       const camData = await camService.generateCAMReport(
         application,
         companyAnalysis,
         aiResearch,
-        riskScore
+        riskScore,
+        settings
       );
 
       camReport = await prisma.camReport.upsert({

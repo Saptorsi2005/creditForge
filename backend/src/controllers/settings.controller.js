@@ -23,19 +23,22 @@ const getSettings = async (req, res, next) => {
           mismatchThreshold: 15,
           autoApprovalScore: 75,
           autoRejectScore: 30,
+          baseLendingRate: 8.5,
+          maxRiskPremiumCap: 3.0,
           sectorRiskConfig: {
-            Technology: 85,
-            Healthcare: 80,
-            FMCG: 80,
-            Manufacturing: 75,
-            Services: 75,
-            Retail: 70,
-            'Real Estate': 60,
-            Construction: 65,
-            Textiles: 70,
-            Metals: 65,
-            Aviation: 55,
-            Hospitality: 60,
+            Manufacturing: 1.2,
+            'IT Services': 0.8,
+            'Real Estate': 1.8,
+            Healthcare: 0.9,
+            Retail: 1.1,
+            Technology: 0.85,
+            FMCG: 0.8,
+            Services: 1.0,
+            Construction: 1.3,
+            Textiles: 1.1,
+            Metals: 1.2,
+            Aviation: 1.5,
+            Hospitality: 1.3,
           },
           researchKeywords: [
             { keyword: 'fraud', weight: 10, severity: 'CRITICAL' },
@@ -64,76 +67,65 @@ const updateSettings = async (req, res, next) => {
       return res.status(403).json({ error: 'Only admins can update settings' });
     }
 
+    // Step 1: Fetch existing active settings
+    const existing = await prisma.settings.findFirst({
+      where: { isActive: true },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Active settings not found' });
+    }
+
+    // Step 2: Merge existing settings with incoming payload
+    const updatedData = {
+      ...existing,
+      ...req.body,
+    };
+
+    // Step 3: Extract weights from merged object
     const {
       revenueWeight,
       debtWeight,
       litigationWeight,
       promoterWeight,
       sectorWeight,
-      highRiskThreshold,
-      mediumRiskThreshold,
-      mismatchThreshold,
-      autoApprovalScore,
-      autoRejectScore,
-      sectorRiskConfig,
-      researchKeywords,
-    } = req.body;
+    } = updatedData;
 
-    // Validate weights sum to 1.0
-    const totalWeight =
-      (revenueWeight || 0) +
-      (debtWeight || 0) +
-      (litigationWeight || 0) +
-      (promoterWeight || 0) +
-      (sectorWeight || 0);
+    // Step 4: Validate weights safely
+    const weights = [
+      revenueWeight,
+      debtWeight,
+      litigationWeight,
+      promoterWeight,
+      sectorWeight,
+    ];
 
-    if (Math.abs(totalWeight - 1.0) > 0.01) {
+    if (weights.some((w) => typeof w !== 'number' || isNaN(w))) {
+      return res.status(400).json({
+        error: 'All weights must be valid numbers',
+      });
+    }
+
+    if (weights.some((w) => w < 0 || w > 1)) {
+      return res.status(400).json({
+        error: 'Weights must be between 0 and 1',
+      });
+    }
+
+    const total = weights.reduce((a, b) => a + b, 0);
+
+    if (Math.abs(total - 1.0) > 0.001) {
       return res.status(400).json({
         error: 'Weights must sum to 1.0',
-        currentSum: totalWeight,
+        currentSum: total,
       });
     }
 
-    let settings = await prisma.settings.findFirst({
-      where: { isActive: true },
+    // Step 5: Update database using only fields from req.body
+    const settings = await prisma.settings.update({
+      where: { id: existing.id },
+      data: req.body,
     });
-
-    if (settings) {
-      settings = await prisma.settings.update({
-        where: { id: settings.id },
-        data: {
-          revenueWeight,
-          debtWeight,
-          litigationWeight,
-          promoterWeight,
-          sectorWeight,
-          highRiskThreshold,
-          mediumRiskThreshold,
-          mismatchThreshold,
-          autoApprovalScore,
-          autoRejectScore,
-          sectorRiskConfig,
-          researchKeywords,
-        },
-      });
-    } else {
-      settings = await prisma.settings.create({
-        data: {
-          revenueWeight,
-          debtWeight,
-          litigationWeight,
-          promoterWeight,
-          sectorWeight,
-          highRiskThreshold,
-          mediumRiskThreshold,
-          mismatchThreshold,
-          autoApprovalScore,
-          autoRejectScore,
-          sectorRiskConfig,
-          researchKeywords,
-        },
-      });
-    }
 
     res.json({
       message: 'Settings updated successfully',
@@ -173,19 +165,22 @@ const resetSettings = async (req, res, next) => {
         mismatchThreshold: 15,
         autoApprovalScore: 75,
         autoRejectScore: 30,
+        baseLendingRate: 8.5,
+        maxRiskPremiumCap: 3.0,
         sectorRiskConfig: {
-          Technology: 85,
-          Healthcare: 80,
-          FMCG: 80,
-          Manufacturing: 75,
-          Services: 75,
-          Retail: 70,
-          'Real Estate': 60,
-          Construction: 65,
-          Textiles: 70,
-          Metals: 65,
-          Aviation: 55,
-          Hospitality: 60,
+          Manufacturing: 1.2,
+          'IT Services': 0.8,
+          'Real Estate': 1.8,
+          Healthcare: 0.9,
+          Retail: 1.1,
+          Technology: 0.85,
+          FMCG: 0.8,
+          Services: 1.0,
+          Construction: 1.3,
+          Textiles: 1.1,
+          Metals: 1.2,
+          Aviation: 1.5,
+          Hospitality: 1.3,
         },
         researchKeywords: [
           { keyword: 'fraud', weight: 10, severity: 'CRITICAL' },

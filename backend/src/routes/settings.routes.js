@@ -35,6 +35,8 @@ router.put(
     body('mismatchThreshold').optional().isFloat({ min: 0, max: 100 }),
     body('autoApprovalScore').optional().isFloat({ min: 0, max: 100 }),
     body('autoRejectScore').optional().isFloat({ min: 0, max: 100 }),
+    body('baseLendingRate').optional().isFloat({ min: 0, max: 50 }),
+    body('maxRiskPremiumCap').optional().isFloat({ min: 0, max: 20 }),
     validate,
   ],
   updateSettings

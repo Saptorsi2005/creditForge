@@ -10,7 +10,7 @@ class CAMService {
   /**
    * Generate CAM report content
    */
-  async generateCAMReport(application, companyAnalysis, aiResearch, riskScore) {
+  async generateCAMReport(application, companyAnalysis, aiResearch, riskScore, settings = null) {
     // Executive Summary
     const executiveSummary = this.generateExecutiveSummary(
       application,
@@ -54,7 +54,8 @@ class CAMService {
     const recommendation = this.generateFinalRecommendation(
       application,
       riskScore,
-      companyAnalysis
+      companyAnalysis,
+      settings
     );
 
     return {
@@ -381,33 +382,44 @@ class CAMService {
   /**
    * Generate Final Recommendation
    */
-  generateFinalRecommendation(application, riskScore, companyAnalysis) {
+  generateFinalRecommendation(application, riskScore, companyAnalysis, settings = null) {
     const decision = riskScore.recommendation;
     let amount = application.loanAmount;
     let tenure = 60; // Default 5 years
-    let rate = 10.5; // Default rate
+    
+    // Calculate interest rate using settings if available
+    const baseLendingRate = settings?.baseLendingRate || 8.5;
+    const maxRiskPremiumCap = settings?.maxRiskPremiumCap || 3.0;
+    
+    // Formula: Final ROI = Base Rate + (Risk Premium × (100 - AI Score)/100)
+    const riskFactor = (100 - riskScore.compositeScore) / 100;
+    let rate = baseLendingRate + (maxRiskPremiumCap * riskFactor);
 
-    // Adjust based on risk
+    // Adjust based on risk and decision
     if (decision === 'APPROVE') {
       if (riskScore.compositeScore > 80) {
-        rate = 9.5;
         tenure = 84; // 7 years
+        // Already low rate due to high score
       } else if (riskScore.compositeScore > 70) {
-        rate = 10.0;
         tenure = 60;
       } else {
-        rate = 10.5;
         tenure = 48;
+        // Slightly increase rate for lower scores within approval range
+        rate = rate * 1.05;
       }
     } else if (decision === 'CONDITIONAL') {
       amount = application.loanAmount * 0.75; // Reduce by 25%
-      rate = 11.5;
       tenure = 36;
+      // Add conditional premium
+      rate = rate * 1.15;
     } else {
       amount = 0;
       rate = 0;
       tenure = 0;
     }
+    
+    // Round rate to 2 decimal places
+    rate = parseFloat(rate.toFixed(2));
 
     // Conditions
     const conditions = [];

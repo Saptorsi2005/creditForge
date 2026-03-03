@@ -306,6 +306,10 @@ model Settings {
   autoApprovalScore     Float       @default(75)
   autoRejectScore       Float       @default(30)
   
+  // Interest Rate Engine
+  baseLendingRate       Float       @default(8.5)   // Base lending rate percentage
+  maxRiskPremiumCap     Float       @default(3.0)   // Maximum risk premium percentage
+  
   // Sector Risk Multipliers
   sectorRiskConfig      Json?       // Object with sector-based risk adjustments
   

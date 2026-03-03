@@ -216,28 +216,37 @@ class RiskService {
   /**
    * Calculate sector score (0-100)
    * Uses sectorRiskConfig from Settings if provided, otherwise falls back to safe defaults.
+   * Sector multipliers > 1.0 penalize the score, < 1.0 boost it.
    */
   calculateSectorScore(sector, sectorRiskConfig = null) {
-    // Default sector risk map (used when Settings not available)
-    const defaultMap = {
-      'Technology': 85,
-      'Healthcare': 80,
-      'FMCG': 80,
-      'Manufacturing': 75,
-      'Services': 75,
-      'Retail': 70,
-      'Real Estate': 60,
-      'Construction': 65,
-      'Textiles': 70,
-      'Metals': 65,
-      'Aviation': 55,
-      'Hospitality': 60,
+    // Default sector risk multipliers (used when Settings not available)
+    const defaultMultipliers = {
+      'Technology': 0.85,
+      'Healthcare': 0.9,
+      'FMCG': 0.8,
+      'Manufacturing': 1.2,
+      'Services': 1.0,
+      'Retail': 1.1,
+      'Real Estate': 1.8,
+      'Construction': 1.3,
+      'Textiles': 1.1,
+      'Metals': 1.2,
+      'Aviation': 1.5,
+      'Hospitality': 1.3,
+      'IT Services': 0.8,
     };
 
-    const configMap = sectorRiskConfig || {};
+    const configMultipliers = sectorRiskConfig || {};
     // Merge DB config over defaults so admins can override any sector
-    const effectiveMap = { ...defaultMap, ...configMap };
-    return effectiveMap[sector] ?? 70;
+    const effectiveMultipliers = { ...defaultMultipliers, ...configMultipliers };
+    const multiplier = effectiveMultipliers[sector] ?? 1.0;
+    
+    // Base score of 75, adjusted by multiplier
+    // Lower multiplier = higher score (less risky), higher multiplier = lower score (more risky)
+    const baseScore = 75;
+    const adjustedScore = baseScore / multiplier;
+    
+    return Math.max(0, Math.min(100, adjustedScore));
   }
 
   /**
