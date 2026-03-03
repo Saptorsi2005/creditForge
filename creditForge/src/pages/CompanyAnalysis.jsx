@@ -5,9 +5,9 @@ import {
     Tooltip as RechartsTooltip, ResponsiveContainer
 } from 'recharts';
 import {
-    Building2, TrendingUp, AlertTriangle, Scale, FileWarning,
+    Building2, AlertTriangle, FileWarning,
     Wallet, ArrowUpRight, ArrowDownRight, Activity, Loader2,
-    AlertCircle, ArrowLeft, RefreshCw, CheckCircle2
+    AlertCircle, ArrowLeft, RefreshCw, CheckCircle2, Pencil, X
 } from 'lucide-react';
 import { analysisAPI, applicationsAPI } from '../services/api';
 
@@ -32,19 +32,24 @@ function fmtPct(val) {
     return `${fmt(val)}%`;
 }
 
+/**
+ * buildRevenueChart — Override priority:
+ * If financialOverrides.multiYearRevenue exists, use it for the chart.
+ * Otherwise fall back to extracted multiYearRevenue.
+ */
 function buildRevenueChart(analysis) {
-    const myr = analysis?.multiYearRevenue;
+    const overrideMyr = analysis?.financialOverrides?.multiYearRevenue;
+    const extractedMyr = analysis?.multiYearRevenue;
+    const myr = (Array.isArray(overrideMyr) && overrideMyr.length > 0) ? overrideMyr : extractedMyr;
 
-    if (!Array.isArray(myr) || myr.length === 0) {
-        return [];
-    }
+    if (!Array.isArray(myr) || myr.length === 0) return [];
 
     return myr
         .sort((a, b) => a.year - b.year)
         .map((item) => ({
             year: item.year,
-            revenue: item.revenue / 10000000,
-            ebitda: item.ebitda / 10000000,
+            revenue: (item.revenue ?? 0) / 10000000,
+            ebitda: (item.ebitda ?? 0) / 10000000,
         }));
 }
 
@@ -53,6 +58,197 @@ function severityColor(s = '') {
     if (sv === 'high' || sv === 'critical') return 'border-red-500/30 bg-red-500/10 text-red-400';
     if (sv === 'medium') return 'border-brand-yellow/30 bg-brand-yellow/10 text-brand-yellow';
     return 'border-slate-700 bg-slate-800 text-slate-300';
+}
+
+// ── OverridePill: shown next to a metric that has been manually overridden ─────
+function OverridePill() {
+    return (
+        <span className="ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25">
+            <Pencil className="h-2.5 w-2.5" /> OVR
+        </span>
+    );
+}
+
+// ── EditFinancialsModal ────────────────────────────────────────────────────────
+function EditFinancialsModal({ analysis, onClose, onSave, saving }) {
+    const ov = analysis?.financialOverrides || {};
+
+    // Helper: pre-fill from override ?? extracted value, converted to Crores for display
+    const initCr = (overrideKey, extractedVal) => {
+        const raw = ov[overrideKey] !== undefined ? ov[overrideKey] : extractedVal;
+        return raw !== null && raw !== undefined ? String(parseFloat((raw / 10000000).toFixed(4))) : '';
+    };
+
+    const [fields, setFields] = useState({
+        revenue: initCr('revenue', analysis?.revenue),
+        ebitda: initCr('ebitda', analysis?.ebitda),
+        netProfit: initCr('netProfit', analysis?.netProfit),
+        totalDebt: initCr('totalDebt', analysis?.totalDebt),
+        netWorth: initCr('netWorth', analysis?.netWorth),
+        currentAssets: initCr('currentAssets', analysis?.totalAssets),
+        currentLiabilities: initCr('currentLiabilities', analysis?.totalLiabilities),
+    });
+    const [errors, setErrors] = useState({});
+
+    // multiYearRevenue rows state
+    const extractedMyr = analysis?.multiYearRevenue || [];
+    const overrideMyr = Array.isArray(ov.multiYearRevenue) ? ov.multiYearRevenue : null;
+    const baseMyr = overrideMyr || extractedMyr;
+    const [myrRows, setMyrRows] = useState(
+        baseMyr.map(r => ({
+            year: String(r.year),
+            revenue: r.revenue !== undefined ? String(parseFloat((r.revenue / 10000000).toFixed(4))) : '',
+            ebitda: r.ebitda !== undefined ? String(parseFloat((r.ebitda / 10000000).toFixed(4))) : '',
+        }))
+    );
+
+    const validate = () => {
+        const errs = {};
+        Object.entries(fields).forEach(([k, v]) => {
+            if (v !== '' && (isNaN(parseFloat(v)) || parseFloat(v) < 0)) {
+                errs[k] = 'Must be a non-negative number';
+            }
+        });
+        myrRows.forEach((row, i) => {
+            if (row.revenue !== '' && (isNaN(parseFloat(row.revenue)) || parseFloat(row.revenue) < 0))
+                errs[`myr_rev_${i}`] = 'Invalid';
+            if (row.ebitda !== '' && (isNaN(parseFloat(row.ebitda)) || parseFloat(row.ebitda) < 0))
+                errs[`myr_ebitda_${i}`] = 'Invalid';
+        });
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
+    const handleSave = () => {
+        if (!validate()) return;
+        // Convert Crores back to raw INR
+        const toRaw = v => v !== '' ? parseFloat(v) * 10000000 : undefined;
+        const payload = {};
+        Object.entries(fields).forEach(([k, v]) => {
+            if (v !== '') payload[k] = toRaw(v);
+        });
+        if (myrRows.length > 0) {
+            payload.multiYearRevenue = myrRows
+                .filter(r => r.year)
+                .map(r => ({
+                    year: Number(r.year),
+                    revenue: r.revenue !== '' ? parseFloat(r.revenue) * 10000000 : undefined,
+                    ebitda: r.ebitda !== '' ? parseFloat(r.ebitda) * 10000000 : undefined,
+                }));
+        }
+        onSave(payload);
+    };
+
+    const inputClass = (key) =>
+        `w-full bg-slate-800 border ${errors[key] ? 'border-red-500/60' : 'border-slate-700'} rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-blue placeholder-slate-600 transition-colors`;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+                    <div>
+                        <h2 className="text-lg font-semibold text-white">Edit Financial Values</h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Original extracted data is preserved. Overrides are tracked separately.</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors">
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+                    {/* Scalar fields */}
+                    <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Financial Metrics (₹ Crores)</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {[
+                                { key: 'revenue', label: 'Annual Revenue' },
+                                { key: 'ebitda', label: 'EBITDA' },
+                                { key: 'netProfit', label: 'Net Profit' },
+                                { key: 'totalDebt', label: 'Total Debt' },
+                                { key: 'netWorth', label: 'Net Worth' },
+                                { key: 'currentAssets', label: 'Current Assets' },
+                                { key: 'currentLiabilities', label: 'Current Liabilities' },
+                            ].map(({ key, label }) => (
+                                <div key={key}>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                                        {label}
+                                        {ov[key] !== undefined && <span className="ml-1 text-amber-400">(overridden)</span>}
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        placeholder="e.g. 46.0"
+                                        value={fields[key]}
+                                        onChange={e => setFields(f => ({ ...f, [key]: e.target.value }))}
+                                        className={inputClass(key)}
+                                    />
+                                    {errors[key] && <p className="text-xs text-red-400 mt-1">{errors[key]}</p>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Multi-year Revenue */}
+                    {myrRows.length > 0 && (
+                        <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Multi-Year Revenue (₹ Crores)</p>
+                            <div className="space-y-3">
+                                {myrRows.map((row, i) => (
+                                    <div key={i} className="grid grid-cols-3 gap-3 items-center">
+                                        <div>
+                                            <label className="block text-xs text-slate-500 mb-1">Year</label>
+                                            <input
+                                                type="number"
+                                                value={row.year}
+                                                onChange={e => setMyrRows(rows => rows.map((r, idx) => idx === i ? { ...r, year: e.target.value } : r))}
+                                                className={inputClass(`myr_year_${i}`)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-slate-500 mb-1">Revenue</label>
+                                            <input
+                                                type="number" min="0" step="any"
+                                                value={row.revenue}
+                                                onChange={e => setMyrRows(rows => rows.map((r, idx) => idx === i ? { ...r, revenue: e.target.value } : r))}
+                                                className={inputClass(`myr_rev_${i}`)}
+                                            />
+                                            {errors[`myr_rev_${i}`] && <p className="text-xs text-red-400 mt-0.5">{errors[`myr_rev_${i}`]}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-slate-500 mb-1">EBITDA</label>
+                                            <input
+                                                type="number" min="0" step="any"
+                                                value={row.ebitda}
+                                                onChange={e => setMyrRows(rows => rows.map((r, idx) => idx === i ? { ...r, ebitda: e.target.value } : r))}
+                                                className={inputClass(`myr_ebitda_${i}`)}
+                                            />
+                                            {errors[`myr_ebitda_${i}`] && <p className="text-xs text-red-400 mt-0.5">{errors[`myr_ebitda_${i}`]}</p>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-800">
+                    <p className="text-xs text-slate-500">Values in ₹ Crores. Leave blank to keep current value.</p>
+                    <div className="flex gap-3">
+                        <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm text-slate-300 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
+                            Cancel
+                        </button>
+                        <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm text-white bg-brand-blue hover:bg-blue-600 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2">
+                            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Apply Override'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export default function CompanyAnalysis() {
@@ -64,6 +260,8 @@ export default function CompanyAnalysis() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [rerunning, setRerunning] = useState(false);
+    const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+    const [overrideSaving, setOverrideSaving] = useState(false);
     const [toast, setToast] = useState(null); // { type: 'success'|'error', message: string }
     const toastTimer = useRef(null);
 
@@ -107,6 +305,21 @@ export default function CompanyAnalysis() {
             showToast('error', msg);
         } finally {
             setRerunning(false);
+        }
+    };
+
+    const handleOverride = async (payload) => {
+        setOverrideSaving(true);
+        try {
+            await analysisAPI.applyOverride(id, payload);
+            setOverrideModalOpen(false);
+            showToast('success', 'Manual override applied. Risk score recalculated.');
+            await fetchData();
+        } catch (err) {
+            const msg = err.response?.data?.error || 'Override failed. Please try again.';
+            showToast('error', msg);
+        } finally {
+            setOverrideSaving(false);
         }
     };
 
@@ -174,12 +387,19 @@ export default function CompanyAnalysis() {
     const score = app?.aiScore ?? app?.riskScore?.compositeScore ?? null;
     const scoreColor = score >= 75 ? 'text-emerald-400' : score >= 50 ? 'text-brand-yellow' : 'text-red-400';
 
+    // Determine if any manual overrides are active
+    const hasOverrides = analysis?.financialOverrides &&
+        Object.keys(analysis.financialOverrides).length > 0;
+
+    // Map override keys to overview item labels for OverridePill display
+    const ov = analysis?.financialOverrides || {};
+
     const overviewItems = [
-        { label: 'Annual Turnover', value: fmtCr(analysis?.revenue), subValue: analysis?.revenueGrowth != null ? `${fmtPct(analysis.revenueGrowth)} YoY` : '' },
-        { label: 'EBITDA', value: fmtCr(analysis?.ebitda), subValue: analysis?.ebitdaMargin != null ? `Margin: ${fmtPct(analysis.ebitdaMargin)}` : '' },
-        { label: 'Total Debt', value: fmtCr(analysis?.totalDebt), subValue: '' },
-        { label: 'Net Worth', value: fmtCr(analysis?.netWorth), subValue: '' },
-        { label: 'Net Profit', value: fmtCr(analysis?.netProfit), subValue: analysis?.netProfitMargin != null ? `Margin: ${fmtPct(analysis.netProfitMargin)}` : '' },
+        { label: 'Annual Turnover', value: fmtCr(analysis?.revenue), subValue: analysis?.revenueGrowth != null ? `${fmtPct(analysis.revenueGrowth)} YoY` : '', overrideKey: 'revenue' },
+        { label: 'EBITDA', value: fmtCr(analysis?.ebitda), subValue: analysis?.ebitdaMargin != null ? `Margin: ${fmtPct(analysis.ebitdaMargin)}` : '', overrideKey: 'ebitda' },
+        { label: 'Total Debt', value: fmtCr(analysis?.totalDebt), subValue: '', overrideKey: 'totalDebt' },
+        { label: 'Net Worth', value: fmtCr(analysis?.netWorth), subValue: '', overrideKey: 'netWorth' },
+        { label: 'Net Profit', value: fmtCr(analysis?.netProfit), subValue: analysis?.netProfitMargin != null ? `Margin: ${fmtPct(analysis.netProfitMargin)}` : '', overrideKey: 'netProfit' },
     ];
 
     const ratios = [
@@ -194,8 +414,8 @@ export default function CompanyAnalysis() {
             {/* Toast Notification */}
             {toast && (
                 <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl text-sm font-medium transition-all animate-fade-in ${toast.type === 'success'
-                        ? 'bg-emerald-950 border-emerald-500/30 text-emerald-300'
-                        : 'bg-red-950 border-red-500/30 text-red-300'
+                    ? 'bg-emerald-950 border-emerald-500/30 text-emerald-300'
+                    : 'bg-red-950 border-red-500/30 text-red-300'
                     }`}>
                     {toast.type === 'success'
                         ? <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
@@ -221,10 +441,18 @@ export default function CompanyAnalysis() {
                             <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${app?.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
                                 {app?.status?.replace(/_/g, ' ') ?? '—'}
                             </span>
+                            {hasOverrides && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25">
+                                    <Pencil className="h-3 w-3" /> Manual Override Active
+                                </span>
+                            )}
                         </div>
                         <p className="text-sm text-slate-400 font-medium">
                             {app?.sector ?? '—'}  •  {app?.applicationNo ?? '—'}
                         </p>
+                        {hasOverrides && (
+                            <p className="text-xs text-amber-500/80 mt-1">Using manually adjusted values — original extracted data preserved</p>
+                        )}
                     </div>
                 </div>
 
@@ -239,6 +467,14 @@ export default function CompanyAnalysis() {
                         </div>
                     )}
                     <div className="flex gap-2">
+                        {analysis && (
+                            <button
+                                onClick={() => setOverrideModalOpen(true)}
+                                className="px-4 py-2.5 bg-amber-600/20 border border-amber-500/30 hover:bg-amber-600/30 text-amber-300 rounded-lg transition-all text-sm font-semibold flex items-center gap-2"
+                            >
+                                <Pencil className="h-4 w-4" /> Edit Financials
+                            </button>
+                        )}
                         {analysis && (
                             <button
                                 onClick={handleRerun}
@@ -278,7 +514,10 @@ export default function CompanyAnalysis() {
                             <div className="space-y-4">
                                 {overviewItems.map((item, idx) => (
                                     <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-800/50 last:border-0">
-                                        <span className="text-sm font-medium text-slate-400">{item.label}</span>
+                                        <span className="text-sm font-medium text-slate-400 flex items-center">
+                                            {item.label}
+                                            {item.overrideKey && ov[item.overrideKey] !== undefined && <OverridePill />}
+                                        </span>
                                         <div className="text-right">
                                             <p className="text-sm font-semibold text-slate-200">{item.value}</p>
                                             {item.subValue && <p className="text-xs text-brand-blue/80 font-medium">{item.subValue}</p>}
@@ -410,6 +649,16 @@ export default function CompanyAnalysis() {
                     )}
                 </div>
             </div>
+
+            {/* Edit Financials Modal */}
+            {overrideModalOpen && analysis && (
+                <EditFinancialsModal
+                    analysis={analysis}
+                    onClose={() => setOverrideModalOpen(false)}
+                    onSave={handleOverride}
+                    saving={overrideSaving}
+                />
+            )}
         </div>
     );
 }

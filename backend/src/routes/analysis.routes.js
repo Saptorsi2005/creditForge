@@ -1,11 +1,12 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const {
   getCompanyAnalysis,
   getAIResearch,
   getRiskScore,
   getCAMReport,
   getCAMPDF,
+  applyFinancialOverride,
 } = require('../controllers/analysis.controller');
 
 const router = express.Router();
@@ -39,5 +40,11 @@ router.get('/:id/cam-report', authenticate, getCAMReport);
  * Download CAM PDF
  */
 router.get('/:id/cam-report/pdf', authenticate, getCAMPDF);
+
+/**
+ * PUT /api/applications/:id/company-analysis/override
+ * Apply financial overrides — Admin and Analyst only
+ */
+router.put('/:id/company-analysis/override', authenticate, authorize('ADMIN', 'ANALYST'), applyFinancialOverride);
 
 module.exports = router;

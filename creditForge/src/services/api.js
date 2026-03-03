@@ -72,7 +72,9 @@ export const analysisAPI = {
   downloadCAMPDF: (id) => api.get(`/applications/${id}/cam-report/pdf`, {
     responseType: 'blob',
   }),
+  applyOverride: (id, data) => api.put(`/applications/${id}/company-analysis/override`, data),
 };
+
 
 // Settings API
 export const settingsAPI = {

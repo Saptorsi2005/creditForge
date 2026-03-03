@@ -155,7 +155,8 @@ model CompanyAnalysis {
   opportunities         Json?       // Array of strings
   threats               Json?       // Array of strings
   multiYearRevenue      Json?       // Array of { year, revenue, ebitda } from PDF
-  
+  financialOverrides    Json?       // Analyst manual overrides — never overwrites extracted columns
+
   applicationId         String      @unique
   application           Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   

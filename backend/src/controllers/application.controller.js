@@ -560,6 +560,11 @@ const rerunAnalysis = async (req, res, next) => {
       });
     }
 
+    // Capture existing overrides BEFORE transaction so they are
+    // preserved after fresh extraction (overrides survive re-runs)
+    const existingFinancialOverrides = appCheck.companyAnalysis.financialOverrides ?? null;
+    console.log('[RerunAnalysis] Existing financialOverrides will be preserved:', !!existingFinancialOverrides);
+
     // Run AI research OUTSIDE the transaction (external API, cannot be rolled back)
     console.log('[RerunAnalysis] Running AI research...');
     const aiResearchData = await researchService.analyzeCompany(
@@ -623,36 +628,91 @@ const rerunAnalysis = async (req, res, next) => {
         mismatchFlag = revenueMismatch > mismatchThreshold;
       }
 
-      // Update CompanyAnalysis (NOT create)
+      // Update CompanyAnalysis — use override-priority values for derived metrics
+      // and always preserve existing financialOverrides (they must survive re-runs)
+      const overrides = existingFinancialOverrides || {};
+      const ov = (key, fallback) => (overrides[key] !== undefined ? overrides[key] : (fallback ?? null));
+
+      // Fresh extracted raw values
+      const freshRevenue = fd.revenue ?? null;
+      const freshEbitda = fd.ebitda ?? null;
+      const freshNetProfit = fd.netProfit ?? null;
+      const freshTotalDebt = fd.totalDebt ?? null;
+      const freshNetWorth = fd.netWorth ?? null;
+
+      // Effective values = override ?? fresh extracted
+      const effRevenue = ov('revenue', freshRevenue);
+      const effEbitda = ov('ebitda', freshEbitda);
+      const effNetProfit = ov('netProfit', freshNetProfit);
+      const effTotalDebt = ov('totalDebt', freshTotalDebt);
+      const effNetWorth = ov('netWorth', freshNetWorth);
+      const effCurrAssets = ov('currentAssets', fd.totalAssets ?? null);
+      const effCurrLiab = ov('currentLiabilities', fd.totalLiabilities ?? null);
+
+      const effEbitdaMargin = (effRevenue && effRevenue !== 0 && effEbitda !== null)
+        ? parseFloat(((effEbitda / effRevenue) * 100).toFixed(2))
+        : (fd.ebitdaMargin ?? null);
+
+      const effNetProfitMargin = (effRevenue && effRevenue !== 0 && effNetProfit !== null)
+        ? parseFloat(((effNetProfit / effRevenue) * 100).toFixed(2))
+        : (fd.netProfitMargin ?? null);
+
+      const effDebtToEquity = (effTotalDebt !== null && effNetWorth && effNetWorth !== 0)
+        ? parseFloat((effTotalDebt / effNetWorth).toFixed(4))
+        : (fd.debtToEquity ?? null);
+
+      const effCurrentRatio = (effCurrAssets !== null && effCurrLiab && effCurrLiab !== 0)
+        ? parseFloat((effCurrAssets / effCurrLiab).toFixed(4))
+        : (fd.currentRatio ?? null);
+
       const caPayload = {
-        revenue: fd.revenue ?? null,
+        // Raw extracted columns — always updated with fresh data
+        revenue: freshRevenue,
         revenueGrowth: fd.revenueGrowth ?? null,
-        ebitda: fd.ebitda ?? null,
-        ebitdaMargin: fd.ebitdaMargin ?? null,
-        netProfit: fd.netProfit ?? null,
-        netProfitMargin: fd.netProfitMargin ?? null,
+        ebitda: freshEbitda,
+        netProfit: freshNetProfit,
         totalAssets: fd.totalAssets ?? null,
-        totalDebt: fd.totalDebt ?? null,
-        netWorth: fd.netWorth ?? null,
-        debtToEquity: fd.debtToEquity ?? null,
-        currentRatio: fd.currentRatio ?? null,
+        totalDebt: freshTotalDebt,
+        netWorth: freshNetWorth,
         multiYearRevenue: fd.multiYearRevenue ?? null,
         gstRevenue,
         bankRevenue,
         revenueMismatch,
         mismatchFlag,
+        // Derived metrics recomputed with override-priority
+        ebitdaMargin: effEbitdaMargin,
+        netProfitMargin: effNetProfitMargin,
+        debtToEquity: effDebtToEquity,
+        currentRatio: effCurrentRatio,
+        // CRITICAL: preserve existing overrides — never clear on re-run
+        financialOverrides: existingFinancialOverrides,
       };
+
 
       const companyAnalysisRecord = await tx.companyAnalysis.update({
         where: { applicationId: id },
         data: caPayload,
       });
-      console.log('[RerunAnalysis] CompanyAnalysis updated');
+      console.log('[RerunAnalysis] CompanyAnalysis updated (overrides preserved:', !!existingFinancialOverrides, ')');
 
-      // Recalculate risk score
+      // Use override-priority merged view for risk scoring
+      const mergedForRisk = {
+        ...companyAnalysisRecord,
+        revenue: effRevenue,
+        ebitda: effEbitda,
+        netProfit: effNetProfit,
+        totalDebt: effTotalDebt,
+        netWorth: effNetWorth,
+        ebitdaMargin: effEbitdaMargin,
+        netProfitMargin: effNetProfitMargin,
+        debtToEquity: effDebtToEquity,
+        currentRatio: effCurrentRatio,
+      };
+
+      // Recalculate risk score using merged financial view
       const riskScoreData = await riskService.calculateRiskScore(
         appCheck,
-        companyAnalysisRecord,
+        mergedForRisk,
         aiResearchRecord,
         settings
       );
