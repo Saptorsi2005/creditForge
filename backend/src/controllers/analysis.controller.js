@@ -347,6 +347,14 @@ const applyFinancialOverride = async (req, res, next) => {
       }));
     }
 
+    // ── 2b. Validate reason field (Feature 3) ─────────────────────────────────
+    //        Required if any numeric override value changes from extracted.
+    const reason = (typeof req.body.reason === 'string') ? req.body.reason.trim() : '';
+    const hasNumericChange = Object.keys(incomingOverrides).some(k => k !== 'multiYearRevenue');
+    if (hasNumericChange && !reason) {
+      return res.status(400).json({ error: 'Reason for override is required.' });
+    }
+
     if (Object.keys(incomingOverrides).length === 0) {
       return res.status(400).json({ error: 'No valid override fields provided.' });
     }
@@ -355,7 +363,16 @@ const applyFinancialOverride = async (req, res, next) => {
     const existingOverrides = (analysis.financialOverrides && typeof analysis.financialOverrides === 'object')
       ? analysis.financialOverrides
       : {};
-    const mergedOverrides = { ...existingOverrides, ...incomingOverrides };
+    // Remove meta-fields before merging numeric overrides, re-attach below
+    const { reason: _r, overriddenAt: _oa, overriddenBy: _ob, ...existingNumeric } = existingOverrides;
+    const mergedOverrides = {
+      ...existingNumeric,
+      ...incomingOverrides,
+      // Feature 3: audit metadata stored inside JSONB
+      reason: reason || _r || '',
+      overriddenAt: new Date().toISOString(),
+      overriddenBy: req.user?.name || req.user?.email || 'Unknown',
+    };
 
     // ── 4. Recompute derived metrics using override-priority logic ─────────────
     //       Formula: use override value if present, else fall back to extracted.
@@ -493,6 +510,165 @@ const applyFinancialOverride = async (req, res, next) => {
   }
 };
 
+/**
+ * Reset financial overrides — DELETE /applications/:id/company-analysis/override
+ *
+ * Sets financialOverrides = null and restores all derived metrics
+ * from the original extracted columns. Risk score is recalculated.
+ *
+ * Safety:
+ *  - Extracted columns (revenue, ebitda, etc.) are NEVER modified.
+ *  - Only financialOverrides JSONB field is set to null.
+ *  - A new CompanyAnalysis / RiskScore row is NEVER created.
+ */
+const resetFinancialOverride = async (req, res, next) => {
+  const { id } = req.params;
+  try {
+    const analysis = await prisma.companyAnalysis.findUnique({
+      where: { applicationId: id },
+      include: {
+        application: { select: { companyName: true, sector: true, loanAmount: true, id: true } },
+      },
+    });
+
+    if (!analysis) {
+      return res.status(404).json({ error: 'Company analysis not found.' });
+    }
+
+    if (!analysis.financialOverrides) {
+      return res.status(200).json({
+        message: 'No overrides to reset.',
+        analysis,
+      });
+    }
+
+    const application = await prisma.application.findUnique({ where: { id } });
+    const aiResearch = await prisma.aIResearch.findUnique({ where: { applicationId: id } });
+    const riskRecord = await prisma.riskScore.findUnique({ where: { applicationId: id } });
+    const settings = await prisma.settings.findFirst({ where: { isActive: true } });
+
+    // Restore derived metrics from raw extracted columns only
+    const rawRevenue = analysis.revenue;
+    const rawEbitda = analysis.ebitda;
+    const rawNetProfit = analysis.netProfit;
+    const rawTotalDebt = analysis.totalDebt;
+    const rawNetWorth = analysis.netWorth;
+    const rawTotalAssets = analysis.totalAssets;
+    const rawTotalLiabilities = analysis.totalLiabilities;
+
+    const restoredEbitdaMargin = (rawRevenue && rawRevenue !== 0 && rawEbitda !== null)
+      ? parseFloat(((rawEbitda / rawRevenue) * 100).toFixed(2))
+      : analysis.ebitdaMargin;
+
+    const restoredNetProfitMargin = (rawRevenue && rawRevenue !== 0 && rawNetProfit !== null)
+      ? parseFloat(((rawNetProfit / rawRevenue) * 100).toFixed(2))
+      : analysis.netProfitMargin;
+
+    const restoredDebtToEquity = (rawTotalDebt !== null && rawNetWorth && rawNetWorth !== 0)
+      ? parseFloat((rawTotalDebt / rawNetWorth).toFixed(4))
+      : analysis.debtToEquity;
+
+    const restoredCurrentRatio = (rawTotalAssets !== null && rawTotalLiabilities && rawTotalLiabilities !== 0)
+      ? parseFloat((rawTotalAssets / rawTotalLiabilities).toFixed(4))
+      : analysis.currentRatio;
+
+    // Update CompanyAnalysis: clear overrides + restore derived metrics
+    const updatedAnalysis = await prisma.companyAnalysis.update({
+      where: { applicationId: id },
+      data: {
+        financialOverrides: null,
+        ebitdaMargin: restoredEbitdaMargin,
+        netProfitMargin: restoredNetProfitMargin,
+        debtToEquity: restoredDebtToEquity,
+        currentRatio: restoredCurrentRatio,
+      },
+    });
+
+    // Recalculate risk score using extracted-only analysis view
+    const extractedOnlyAnalysis = {
+      ...updatedAnalysis,
+      revenue: rawRevenue,
+      ebitda: rawEbitda,
+      netProfit: rawNetProfit,
+      totalDebt: rawTotalDebt,
+      netWorth: rawNetWorth,
+      ebitdaMargin: restoredEbitdaMargin,
+      netProfitMargin: restoredNetProfitMargin,
+      debtToEquity: restoredDebtToEquity,
+      currentRatio: restoredCurrentRatio,
+    };
+
+    const previousScore = riskRecord?.compositeScore ?? null;
+    const riskScoreData = await riskService.calculateRiskScore(
+      application,
+      extractedOnlyAnalysis,
+      aiResearch,
+      settings
+    );
+
+    const riskPayload = {
+      compositeScore: riskScoreData.compositeScore,
+      riskLevel: riskScoreData.riskLevel,
+      revenueStability: riskScoreData.revenueStability,
+      debtRatio: riskScoreData.debtRatio,
+      litigationScore: riskScoreData.litigationScore,
+      promoterScore: riskScoreData.promoterScore,
+      sectorScore: riskScoreData.sectorScore,
+      weights: riskScoreData.weights,
+      factorBreakdown: riskScoreData.factorBreakdown,
+      deductions: riskScoreData.deductions || [],
+      character: riskScoreData.character,
+      capacity: riskScoreData.capacity,
+      capital: riskScoreData.capital,
+      collateral: riskScoreData.collateral,
+      conditions: riskScoreData.conditions,
+      recommendation: riskScoreData.recommendation,
+      recommendationReason: riskScoreData.recommendationReason,
+    };
+
+    let updatedRiskScore;
+    if (riskRecord) {
+      updatedRiskScore = await prisma.riskScore.update({
+        where: { applicationId: id },
+        data: riskPayload,
+      });
+    } else {
+      updatedRiskScore = await prisma.riskScore.create({
+        data: { applicationId: id, ...riskPayload },
+      });
+    }
+
+    // Restore application status from recalculated score
+    const autoApprove = settings?.autoApprovalScore ?? 75;
+    const autoReject = settings?.autoRejectScore ?? 30;
+    let newStatus = 'COMPLETED';
+    if (riskScoreData.compositeScore >= autoApprove) newStatus = 'APPROVED';
+    else if (riskScoreData.compositeScore <= autoReject) newStatus = 'REJECTED';
+
+    await prisma.application.update({
+      where: { id },
+      data: { aiScore: riskScoreData.compositeScore, status: newStatus },
+    });
+
+    console.log(
+      '[Override Reset] applicationId:', id,
+      '| previousScore:', previousScore,
+      '| restoredScore:', riskScoreData.compositeScore
+    );
+
+    res.json({
+      message: 'Overrides cleared. Financial metrics restored to extracted values.',
+      analysis: updatedAnalysis,
+      riskScore: updatedRiskScore,
+      previousScore,
+      newScore: riskScoreData.compositeScore,
+    });
+  } catch (error) {
+    console.error('[Override Reset] Error:', error.message);
+    next(error);
+  }
+};
+
 module.exports = {
   getCompanyAnalysis,
   getAIResearch,
@@ -500,4 +676,5 @@ module.exports = {
   getCAMReport,
   getCAMPDF,
   applyFinancialOverride,
+  resetFinancialOverride,
 };

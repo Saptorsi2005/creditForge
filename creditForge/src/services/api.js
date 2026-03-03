@@ -73,7 +73,9 @@ export const analysisAPI = {
     responseType: 'blob',
   }),
   applyOverride: (id, data) => api.put(`/applications/${id}/company-analysis/override`, data),
+  resetOverride: (id) => api.delete(`/applications/${id}/company-analysis/override`),
 };
+
 
 
 // Settings API

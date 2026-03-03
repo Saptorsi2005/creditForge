@@ -7,6 +7,7 @@ const {
   getCAMReport,
   getCAMPDF,
   applyFinancialOverride,
+  resetFinancialOverride,
 } = require('../controllers/analysis.controller');
 
 const router = express.Router();
@@ -46,5 +47,11 @@ router.get('/:id/cam-report/pdf', authenticate, getCAMPDF);
  * Apply financial overrides — Admin and Analyst only
  */
 router.put('/:id/company-analysis/override', authenticate, authorize('ADMIN', 'ANALYST'), applyFinancialOverride);
+
+/**
+ * DELETE /api/applications/:id/company-analysis/override
+ * Reset all financial overrides — Admin and Analyst only
+ */
+router.delete('/:id/company-analysis/override', authenticate, authorize('ADMIN', 'ANALYST'), resetFinancialOverride);
 
 module.exports = router;

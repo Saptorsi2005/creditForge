@@ -69,44 +69,77 @@ function OverridePill() {
     );
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function toCr(raw) {
+    if (raw === null || raw === undefined) return null;
+    return parseFloat((raw / 10000000).toFixed(4));
+}
+function fmtCrModal(val) {
+    if (val === null || val === undefined) return '—';
+    return `₹ ${parseFloat(val).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Cr`;
+}
+function isChanged(overrideStr, extractedRaw) {
+    if (overrideStr === '' || overrideStr === null || overrideStr === undefined) return false;
+    const ovVal = parseFloat(overrideStr) * 10000000;
+    return extractedRaw !== null && extractedRaw !== undefined && Math.abs(ovVal - extractedRaw) > 0.001;
+}
+
 // ── EditFinancialsModal ────────────────────────────────────────────────────────
-function EditFinancialsModal({ analysis, onClose, onSave, saving }) {
+function EditFinancialsModal({ analysis, onClose, onSave, saving, onReset, resetting }) {
     const ov = analysis?.financialOverrides || {};
 
-    // Helper: pre-fill from override ?? extracted value, converted to Crores for display
-    const initCr = (overrideKey, extractedVal) => {
-        const raw = ov[overrideKey] !== undefined ? ov[overrideKey] : extractedVal;
-        return raw !== null && raw !== undefined ? String(parseFloat((raw / 10000000).toFixed(4))) : '';
+    // Each metric: key=override key, label, extractedRaw=raw INR from analysis
+    const METRICS = [
+        { key: 'revenue', label: 'Annual Revenue', extractedRaw: analysis?.revenue },
+        { key: 'ebitda', label: 'EBITDA', extractedRaw: analysis?.ebitda },
+        { key: 'netProfit', label: 'Net Profit', extractedRaw: analysis?.netProfit },
+        { key: 'totalDebt', label: 'Total Debt', extractedRaw: analysis?.totalDebt },
+        { key: 'netWorth', label: 'Net Worth', extractedRaw: analysis?.netWorth },
+        { key: 'currentAssets', label: 'Current Assets', extractedRaw: analysis?.totalAssets },
+        { key: 'currentLiabilities', label: 'Current Liabilities', extractedRaw: analysis?.totalLiabilities },
+    ];
+
+    // Init override field: override value in Crores if exists, else extracted in Crores
+    const initField = (key, extractedRaw) => {
+        const raw = ov[key] !== undefined ? ov[key] : extractedRaw;
+        return raw !== null && raw !== undefined ? String(toCr(raw)) : '';
     };
 
-    const [fields, setFields] = useState({
-        revenue: initCr('revenue', analysis?.revenue),
-        ebitda: initCr('ebitda', analysis?.ebitda),
-        netProfit: initCr('netProfit', analysis?.netProfit),
-        totalDebt: initCr('totalDebt', analysis?.totalDebt),
-        netWorth: initCr('netWorth', analysis?.netWorth),
-        currentAssets: initCr('currentAssets', analysis?.totalAssets),
-        currentLiabilities: initCr('currentLiabilities', analysis?.totalLiabilities),
-    });
-    const [errors, setErrors] = useState({});
+    const initFields = () => {
+        const f = {};
+        METRICS.forEach(({ key, extractedRaw }) => { f[key] = initField(key, extractedRaw); });
+        return f;
+    };
 
-    // multiYearRevenue rows state
-    const extractedMyr = analysis?.multiYearRevenue || [];
+    const [fields, setFields] = useState(initFields);
+    const [errors, setErrors] = useState({});
+    const [reason, setReason] = useState(ov.reason || '');
+    const [confirmReset, setConfirmReset] = useState(false);
+
+    // multi-year revenue
+    const extractedMyr = Array.isArray(analysis?.multiYearRevenue) ? analysis.multiYearRevenue : [];
     const overrideMyr = Array.isArray(ov.multiYearRevenue) ? ov.multiYearRevenue : null;
     const baseMyr = overrideMyr || extractedMyr;
     const [myrRows, setMyrRows] = useState(
-        baseMyr.map(r => ({
-            year: String(r.year),
-            revenue: r.revenue !== undefined ? String(parseFloat((r.revenue / 10000000).toFixed(4))) : '',
-            ebitda: r.ebitda !== undefined ? String(parseFloat((r.ebitda / 10000000).toFixed(4))) : '',
+        baseMyr.map((r, i) => ({
+            year: String(r.year ?? ''),
+            revenue: r.revenue !== undefined ? String(toCr(r.revenue)) : '',
+            ebitda: r.ebitda !== undefined ? String(toCr(r.ebitda)) : '',
+            // extracted for comparison
+            extRevenue: extractedMyr[i]?.revenue,
+            extEbitda: extractedMyr[i]?.ebitda,
         }))
     );
 
+    // detect if any value actually changed from extracted
+    const hasAnyChange = METRICS.some(({ key, extractedRaw }) => isChanged(fields[key], extractedRaw));
+
     const validate = () => {
         const errs = {};
-        Object.entries(fields).forEach(([k, v]) => {
+        METRICS.forEach(({ key }) => {
+            const v = fields[key];
             if (v !== '' && (isNaN(parseFloat(v)) || parseFloat(v) < 0)) {
-                errs[k] = 'Must be a non-negative number';
+                errs[key] = 'Must be a non-negative number';
             }
         });
         myrRows.forEach((row, i) => {
@@ -115,17 +148,19 @@ function EditFinancialsModal({ analysis, onClose, onSave, saving }) {
             if (row.ebitda !== '' && (isNaN(parseFloat(row.ebitda)) || parseFloat(row.ebitda) < 0))
                 errs[`myr_ebitda_${i}`] = 'Invalid';
         });
+        if (hasAnyChange && !reason.trim()) {
+            errs.reason = 'Reason is required when overriding values.';
+        }
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
 
     const handleSave = () => {
         if (!validate()) return;
-        // Convert Crores back to raw INR
         const toRaw = v => v !== '' ? parseFloat(v) * 10000000 : undefined;
-        const payload = {};
-        Object.entries(fields).forEach(([k, v]) => {
-            if (v !== '') payload[k] = toRaw(v);
+        const payload = { reason: reason.trim() };
+        METRICS.forEach(({ key }) => {
+            if (fields[key] !== '') payload[key] = toRaw(fields[key]);
         });
         if (myrRows.length > 0) {
             payload.multiYearRevenue = myrRows
@@ -139,112 +174,166 @@ function EditFinancialsModal({ analysis, onClose, onSave, saving }) {
         onSave(payload);
     };
 
-    const inputClass = (key) =>
-        `w-full bg-slate-800 border ${errors[key] ? 'border-red-500/60' : 'border-slate-700'} rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-blue placeholder-slate-600 transition-colors`;
+    const inputCls = (key) =>
+        `w-full bg-slate-950 border ${errors[key] ? 'border-red-500/60' : 'border-slate-700'} rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none focus:border-brand-blue placeholder-slate-700 transition-colors`;
+
+    const rowCls = (key, extractedRaw) =>
+        isChanged(fields[key], extractedRaw)
+            ? 'border-l-2 border-amber-500/60 bg-amber-500/5'
+            : '';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                {/* Modal Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col">
+
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
                     <div>
-                        <h2 className="text-lg font-semibold text-white">Edit Financial Values</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">Original extracted data is preserved. Overrides are tracked separately.</p>
+                        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                            <Pencil className="h-4 w-4 text-amber-400" /> Edit Financial Values
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Original extracted data is preserved. Overrides are tracked and auditable.</p>
                     </div>
                     <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
-                {/* Modal Body */}
+                {/* Body */}
                 <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
-                    {/* Scalar fields */}
+
+                    {/* ── Comparison Table ── */}
                     <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Financial Metrics (₹ Crores)</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {[
-                                { key: 'revenue', label: 'Annual Revenue' },
-                                { key: 'ebitda', label: 'EBITDA' },
-                                { key: 'netProfit', label: 'Net Profit' },
-                                { key: 'totalDebt', label: 'Total Debt' },
-                                { key: 'netWorth', label: 'Net Worth' },
-                                { key: 'currentAssets', label: 'Current Assets' },
-                                { key: 'currentLiabilities', label: 'Current Liabilities' },
-                            ].map(({ key, label }) => (
-                                <div key={key}>
-                                    <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                        <div className="grid grid-cols-3 gap-2 mb-2 px-2">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Metric</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Extracted Value</p>
+                            <p className="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider">Override Value</p>
+                        </div>
+                        <div className="space-y-1">
+                            {METRICS.map(({ key, label, extractedRaw }) => (
+                                <div key={key} className={`grid grid-cols-3 gap-2 items-center px-2 py-2 rounded-lg transition-colors ${rowCls(key, extractedRaw)}`}>
+                                    <span className="text-sm text-slate-300 font-medium flex items-center gap-1">
                                         {label}
-                                        {ov[key] !== undefined && <span className="ml-1 text-amber-400">(overridden)</span>}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="any"
-                                        placeholder="e.g. 46.0"
-                                        value={fields[key]}
-                                        onChange={e => setFields(f => ({ ...f, [key]: e.target.value }))}
-                                        className={inputClass(key)}
-                                    />
-                                    {errors[key] && <p className="text-xs text-red-400 mt-1">{errors[key]}</p>}
+                                        {isChanged(fields[key], extractedRaw) && (
+                                            <span className="text-amber-400" title="Value differs from extracted">⚑</span>
+                                        )}
+                                    </span>
+                                    <span className="text-sm text-slate-500 font-mono">{fmtCrModal(toCr(extractedRaw))}</span>
+                                    <div>
+                                        <input
+                                            type="number" min="0" step="any"
+                                            placeholder="Override (₹ Cr)"
+                                            value={fields[key]}
+                                            onChange={e => setFields(f => ({ ...f, [key]: e.target.value }))}
+                                            className={inputCls(key)}
+                                        />
+                                        {errors[key] && <p className="text-xs text-red-400 mt-0.5">{errors[key]}</p>}
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Multi-year Revenue */}
+                    {/* ── Multi-Year Revenue Comparison ── */}
                     {myrRows.length > 0 && (
                         <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Multi-Year Revenue (₹ Crores)</p>
-                            <div className="space-y-3">
-                                {myrRows.map((row, i) => (
-                                    <div key={i} className="grid grid-cols-3 gap-3 items-center">
-                                        <div>
-                                            <label className="block text-xs text-slate-500 mb-1">Year</label>
-                                            <input
-                                                type="number"
-                                                value={row.year}
-                                                onChange={e => setMyrRows(rows => rows.map((r, idx) => idx === i ? { ...r, year: e.target.value } : r))}
-                                                className={inputClass(`myr_year_${i}`)}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-slate-500 mb-1">Revenue</label>
-                                            <input
-                                                type="number" min="0" step="any"
-                                                value={row.revenue}
-                                                onChange={e => setMyrRows(rows => rows.map((r, idx) => idx === i ? { ...r, revenue: e.target.value } : r))}
-                                                className={inputClass(`myr_rev_${i}`)}
-                                            />
-                                            {errors[`myr_rev_${i}`] && <p className="text-xs text-red-400 mt-0.5">{errors[`myr_rev_${i}`]}</p>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-slate-500 mb-1">EBITDA</label>
-                                            <input
-                                                type="number" min="0" step="any"
-                                                value={row.ebitda}
-                                                onChange={e => setMyrRows(rows => rows.map((r, idx) => idx === i ? { ...r, ebitda: e.target.value } : r))}
-                                                className={inputClass(`myr_ebitda_${i}`)}
-                                            />
-                                            {errors[`myr_ebitda_${i}`] && <p className="text-xs text-red-400 mt-0.5">{errors[`myr_ebitda_${i}`]}</p>}
-                                        </div>
-                                    </div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Multi-Year Revenue (₹ Crores)</p>
+                            <div className="grid grid-cols-5 gap-2 mb-1 px-2">
+                                {['Year', 'Ext. Revenue', 'Ovr. Revenue', 'Ext. EBITDA', 'Ovr. EBITDA'].map(h => (
+                                    <p key={h} className={`text-[10px] font-bold uppercase tracking-wider ${h.startsWith('Ovr') ? 'text-amber-500/80' : 'text-slate-500'}`}>{h}</p>
                                 ))}
+                            </div>
+                            <div className="space-y-1">
+                                {myrRows.map((row, i) => {
+                                    const revChanged = row.revenue !== '' && row.extRevenue !== undefined &&
+                                        Math.abs(parseFloat(row.revenue) * 10000000 - row.extRevenue) > 0.001;
+                                    const ebitdaChanged = row.ebitda !== '' && row.extEbitda !== undefined &&
+                                        Math.abs(parseFloat(row.ebitda) * 10000000 - row.extEbitda) > 0.001;
+                                    return (
+                                        <div key={i} className={`grid grid-cols-5 gap-2 items-center px-2 py-2 rounded-lg ${(revChanged || ebitdaChanged) ? 'border-l-2 border-amber-500/60 bg-amber-500/5' : ''}`}>
+                                            <span className="text-sm text-slate-300 font-mono font-semibold">{row.year}</span>
+                                            <span className="text-sm text-slate-500 font-mono">{fmtCrModal(toCr(row.extRevenue))}</span>
+                                            <div>
+                                                <input type="number" min="0" step="any"
+                                                    value={row.revenue}
+                                                    onChange={e => setMyrRows(rows => rows.map((r, idx) => idx === i ? { ...r, revenue: e.target.value } : r))}
+                                                    className={inputCls(`myr_rev_${i}`)}
+                                                />
+                                                {errors[`myr_rev_${i}`] && <p className="text-xs text-red-400 mt-0.5">{errors[`myr_rev_${i}`]}</p>}
+                                            </div>
+                                            <span className="text-sm text-slate-500 font-mono">{fmtCrModal(toCr(row.extEbitda))}</span>
+                                            <div>
+                                                <input type="number" min="0" step="any"
+                                                    value={row.ebitda}
+                                                    onChange={e => setMyrRows(rows => rows.map((r, idx) => idx === i ? { ...r, ebitda: e.target.value } : r))}
+                                                    className={inputCls(`myr_ebitda_${i}`)}
+                                                />
+                                                {errors[`myr_ebitda_${i}`] && <p className="text-xs text-red-400 mt-0.5">{errors[`myr_ebitda_${i}`]}</p>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
+
+                    {/* ── Reason for Override ── */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                            Reason for Manual Adjustment
+                            {hasAnyChange && <span className="ml-1 text-red-400">*</span>}
+                        </label>
+                        <textarea
+                            rows={3}
+                            placeholder="e.g. Correcting PDF extraction error — verified against audited financials FY2024..."
+                            value={reason}
+                            onChange={e => setReason(e.target.value)}
+                            className={`w-full bg-slate-950 border ${errors.reason ? 'border-red-500/60' : 'border-slate-700'} rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-blue placeholder-slate-600 resize-none transition-colors`}
+                        />
+                        {errors.reason && <p className="text-xs text-red-400 mt-1">{errors.reason}</p>}
+                        {ov.overriddenAt && (
+                            <p className="text-xs text-slate-500 mt-1">
+                                Last override: {new Date(ov.overriddenAt).toLocaleString('en-IN')}
+                                {ov.overriddenBy ? ` by ${ov.overriddenBy}` : ''}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
-                {/* Modal Footer */}
-                <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-800">
-                    <p className="text-xs text-slate-500">Values in ₹ Crores. Leave blank to keep current value.</p>
-                    <div className="flex gap-3">
-                        <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm text-slate-300 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
-                            Cancel
-                        </button>
-                        <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm text-white bg-brand-blue hover:bg-blue-600 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2">
-                            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Apply Override'}
-                        </button>
-                    </div>
+                {/* Footer */}
+                <div className="shrink-0 border-t border-slate-800 px-6 py-4">
+                    {confirmReset ? (
+                        <div className="flex items-center justify-between gap-3 bg-red-950/30 border border-red-500/30 rounded-xl px-4 py-3">
+                            <p className="text-sm text-red-300 font-medium">This will remove all overrides and restore extracted values. Risk score will be recalculated.</p>
+                            <div className="flex gap-2 shrink-0">
+                                <button onClick={() => setConfirmReset(false)} disabled={resetting} className="px-3 py-1.5 text-xs text-slate-300 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
+                                    Cancel
+                                </button>
+                                <button onClick={onReset} disabled={resetting} className="px-3 py-1.5 text-xs text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5">
+                                    {resetting ? <><Loader2 className="h-3 w-3 animate-spin" /> Resetting...</> : 'Yes, Reset'}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex gap-2">
+                                {Object.keys(ov).length > 0 && (
+                                    <button onClick={() => setConfirmReset(true)} className="px-3 py-2 text-xs text-red-400 bg-red-950/20 border border-red-500/30 hover:bg-red-950/40 rounded-lg transition-colors font-semibold">
+                                        Reset to Extracted Data
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex gap-3">
+                                <p className="text-xs text-slate-500 self-center">Values in ₹ Crores</p>
+                                <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm text-slate-300 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
+                                    Cancel
+                                </button>
+                                <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm text-white bg-brand-blue hover:bg-blue-600 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2">
+                                    {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Apply Override'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -262,6 +351,7 @@ export default function CompanyAnalysis() {
     const [rerunning, setRerunning] = useState(false);
     const [overrideModalOpen, setOverrideModalOpen] = useState(false);
     const [overrideSaving, setOverrideSaving] = useState(false);
+    const [resetSaving, setResetSaving] = useState(false);
     const [toast, setToast] = useState(null); // { type: 'success'|'error', message: string }
     const toastTimer = useRef(null);
 
@@ -320,6 +410,21 @@ export default function CompanyAnalysis() {
             showToast('error', msg);
         } finally {
             setOverrideSaving(false);
+        }
+    };
+
+    const handleReset = async () => {
+        setResetSaving(true);
+        try {
+            await analysisAPI.resetOverride(id);
+            setOverrideModalOpen(false);
+            showToast('success', 'Overrides cleared. Financial metrics restored to extracted values.');
+            await fetchData();
+        } catch (err) {
+            const msg = err.response?.data?.error || 'Reset failed. Please try again.';
+            showToast('error', msg);
+        } finally {
+            setResetSaving(false);
         }
     };
 
@@ -528,6 +633,33 @@ export default function CompanyAnalysis() {
                         )}
                     </div>
 
+                    {/* Override Audit Info */}
+                    {hasOverrides && analysis?.financialOverrides?.reason && (
+                        <div className="bg-amber-950/20 border border-amber-500/20 rounded-xl p-5 shadow-sm">
+                            <h3 className="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-2">
+                                <Pencil className="h-4 w-4" /> Override Audit
+                            </h3>
+                            <div className="space-y-2">
+                                <div>
+                                    <p className="text-xs text-slate-500 font-medium mb-1">Reason</p>
+                                    <p className="text-sm text-slate-200 leading-relaxed">{analysis.financialOverrides.reason}</p>
+                                </div>
+                                {analysis.financialOverrides.overriddenAt && (
+                                    <div className="flex items-center justify-between pt-2 border-t border-amber-500/10">
+                                        <p className="text-xs text-slate-500">
+                                            {new Date(analysis.financialOverrides.overriddenAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                                        </p>
+                                        {analysis.financialOverrides.overriddenBy && (
+                                            <span className="text-xs text-amber-400/70 font-medium">
+                                                by {analysis.financialOverrides.overriddenBy}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Risk Flags */}
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
                         <h2 className="text-lg font-semibold text-white mb-5 flex items-center gap-2">
@@ -657,6 +789,8 @@ export default function CompanyAnalysis() {
                     onClose={() => setOverrideModalOpen(false)}
                     onSave={handleOverride}
                     saving={overrideSaving}
+                    onReset={handleReset}
+                    resetting={resetSaving}
                 />
             )}
         </div>
