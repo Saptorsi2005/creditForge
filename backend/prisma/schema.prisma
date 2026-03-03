@@ -1,0 +1,324 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  DOCUMENTS_UPLOADED
+  PROCESSING
+  ANALYZING
+  COMPLETED
+  APPROVED
+  REJECTED
+  FAILED
+  ON_HOLD
+}
+
+enum RiskLevel {
+  VERY_LOW
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum DocumentType {
+  FINANCIAL_STATEMENT
+  GST_RETURN
+  BANK_STATEMENT
+  ITR
+  BALANCE_SHEET
+  PL_STATEMENT
+  COMPANY_PROFILE
+  OTHER
+}
+
+enum UserRole {
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+// Models
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  password     String
+  name         String
+  role         UserRole      @default(ANALYST)
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  applications Application[]
+  
+  @@index([email])
+  @@map("users")
+}
+
+model Application {
+  id                String            @id @default(uuid())
+  applicationNo     String            @unique
+  companyName       String
+  pan               String
+  gstin             String?
+  cin               String?
+  loanAmount        Float
+  loanPurpose       String
+  sector            String
+  status            ApplicationStatus @default(DRAFT)
+  aiScore           Float?
+  submittedAt       DateTime?
+  completedAt       DateTime?
+  
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  documents         Document[]
+  companyAnalysis   CompanyAnalysis?
+  aiResearch        AIResearch?
+  riskScore         RiskScore?
+  camReport         CamReport?
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@index([applicationNo])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("applications")
+}
+
+model Document {
+  id              String        @id @default(uuid())
+  filename        String
+  originalName    String
+  mimeType        String
+  size            Int
+  path            String
+  documentType    DocumentType
+  extractedData   Json?
+  
+  applicationId   String
+  application     Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  uploadedAt      DateTime      @default(now())
+  
+  @@index([applicationId])
+  @@map("documents")
+}
+
+model CompanyAnalysis {
+  id                    String      @id @default(uuid())
+  
+  // Financial Metrics
+  revenue               Float?
+  revenueGrowth         Float?
+  ebitda                Float?
+  ebitdaMargin          Float?
+  netProfit             Float?
+  netProfitMargin       Float?
+  totalAssets           Float?
+  totalLiabilities      Float?
+  netWorth              Float?
+  totalDebt             Float?
+  debtToEquity          Float?
+  currentRatio          Float?
+  interestCoverage      Float?
+  
+  // GST vs Bank Reconciliation
+  gstRevenue            Float?
+  bankRevenue           Float?
+  revenueMismatch       Float?
+  mismatchFlag          Boolean     @default(false)
+  
+  // Qualitative
+  businessModel         String?
+  competitivePosition   String?
+  managementQuality     String?
+  
+  // Analysis Summary
+  strengths             Json?       // Array of strings
+  weaknesses            Json?       // Array of strings
+  opportunities         Json?       // Array of strings
+  threats               Json?       // Array of strings
+  multiYearRevenue      Json?       // Array of { year, revenue, ebitda } from PDF
+  
+  applicationId         String      @unique
+  application           Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  
+  @@map("company_analysis")
+}
+
+model AIResearch {
+  id                    String      @id @default(uuid())
+  
+  // Research Findings
+  litigationCount       Int         @default(0)
+  litigationDetails     Json?       // Array of litigation objects
+  
+  regulatoryIssues      Int         @default(0)
+  regulatoryDetails     Json?       // Array of regulatory issues
+  
+  directorIssues        Int         @default(0)
+  directorDetails       Json?       // Array of director concerns
+  
+  negativeNews          Int         @default(0)
+  newsDetails           Json?       // Array of news items
+  
+  // Sentiment Analysis
+  overallSentiment      String?     // POSITIVE, NEUTRAL, NEGATIVE
+  sentimentScore        Float?      // -1 to 1
+  
+  // Risk Keywords Found
+  riskKeywords          Json?       // Array of keyword objects with counts
+  
+  // Sources
+  sources               Json?       // Array of source URLs/references
+  
+  // Summary
+  executiveSummary      String?
+  redFlags              Json?       // Array of critical red flags
+  
+  applicationId         String      @unique
+  application           Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  
+  @@map("ai_research")
+}
+
+model RiskScore {
+  id                    String      @id @default(uuid())
+  
+  // Composite Score (0-100)
+  compositeScore        Float
+  riskLevel             RiskLevel
+  
+  // Factor Scores
+  revenueStability      Float       // 0-100
+  debtRatio             Float       // 0-100
+  litigationScore       Float       // 0-100
+  promoterScore         Float       // 0-100
+  sectorScore           Float       // 0-100
+  
+  // Weights
+  weights               Json        // Object with weight distribution
+  
+  // Factor Breakdown
+  factorBreakdown       Json        // Detailed breakdown of each factor
+  
+  // Deductions
+  deductions            Json?       // Array of deduction objects
+  
+  // Five C's of Credit
+  character             Float?      // 0-100
+  capacity              Float?      // 0-100
+  capital               Float?      // 0-100
+  collateral            Float?      // 0-100
+  conditions            Float?      // 0-100
+  
+  // Recommendation
+  recommendation        String      // APPROVE, REJECT, CONDITIONAL
+  recommendationReason  String?
+  
+  applicationId         String      @unique
+  application           Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  
+  @@map("risk_scores")
+}
+
+model CamReport {
+  id                    String      @id @default(uuid())
+  
+  // Executive Summary
+  executiveSummary      String
+  
+  // Sections
+  businessOverview      String
+  financialAssessment   String
+  strengthsAnalysis     String
+  risksAnalysis         String
+  mitigationStrategy    String?
+  
+  // Final Recommendation
+  recommendation        String      // APPROVE, REJECT, CONDITIONAL
+  recommendedAmount     Float?
+  recommendedTenure     Int?        // in months
+  recommendedRate       Float?      // interest rate
+  conditions            Json?       // Array of conditions
+  
+  // Covenants
+  financialCovenants    Json?       // Array of financial covenants
+  nonFinancialCovenants Json?       // Array of non-financial covenants
+  
+  // PDF
+  pdfGenerated          Boolean     @default(false)
+  pdfPath               String?
+  
+  applicationId         String      @unique
+  application           Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  
+  @@map("cam_reports")
+}
+
+model Settings {
+  id                    String      @id @default(uuid())
+  
+  // Risk Scoring Weights
+  revenueWeight         Float       @default(0.25)
+  debtWeight            Float       @default(0.20)
+  litigationWeight      Float       @default(0.20)
+  promoterWeight        Float       @default(0.15)
+  sectorWeight          Float       @default(0.20)
+  
+  // Risk Thresholds
+  highRiskThreshold     Float       @default(60)
+  mediumRiskThreshold   Float       @default(40)
+  
+  // GST-Bank Mismatch
+  mismatchThreshold     Float       @default(15)  // percentage
+  
+  // Approval Thresholds
+  autoApprovalScore     Float       @default(75)
+  autoRejectScore       Float       @default(30)
+  
+  // Sector Risk Multipliers
+  sectorRiskConfig      Json?       // Object with sector-based risk adjustments
+  
+  // Keyword weights for research
+  researchKeywords      Json?       // Array of keyword objects with weights
+  
+  // System Configuration
+  maxFileSize           Int         @default(10485760)  // 10MB
+  allowedFileTypes      Json?       // Array of allowed MIME types
+  
+  isActive              Boolean     @default(true)
+  
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  
+  @@map("settings")
+}
