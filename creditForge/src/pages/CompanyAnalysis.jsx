@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -7,7 +7,7 @@ import {
 import {
     Building2, TrendingUp, AlertTriangle, Scale, FileWarning,
     Wallet, ArrowUpRight, ArrowDownRight, Activity, Loader2,
-    AlertCircle, ArrowLeft
+    AlertCircle, ArrowLeft, RefreshCw, CheckCircle2
 } from 'lucide-react';
 import { analysisAPI, applicationsAPI } from '../services/api';
 
@@ -63,30 +63,52 @@ export default function CompanyAnalysis() {
     const [analysis, setAnalysis] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [rerunning, setRerunning] = useState(false);
+    const [toast, setToast] = useState(null); // { type: 'success'|'error', message: string }
+    const toastTimer = useRef(null);
+
+    const showToast = (type, message) => {
+        setToast({ type, message });
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setToast(null), 4000);
+    };
+
+    const fetchData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const [appRes, analysisRes] = await Promise.all([
+                applicationsAPI.getOne(id),
+                analysisAPI.getCompanyAnalysis(id),
+            ]);
+            setApp(appRes.data.application);
+            setAnalysis(analysisRes.data.analysis ?? analysisRes.data.companyAnalysis ?? analysisRes.data);
+        } catch (err) {
+            setError(err.response?.data?.error || 'Failed to load company analysis data.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (!id) { setError('No application ID provided. Navigate from the Dashboard.'); setLoading(false); return; }
-
-        const fetchData = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const [appRes, analysisRes] = await Promise.all([
-                    applicationsAPI.getOne(id),
-                    analysisAPI.getCompanyAnalysis(id),
-                ]);
-                setApp(appRes.data.application);
-                // API returns { analysis: { ... } }
-                setAnalysis(analysisRes.data.analysis ?? analysisRes.data.companyAnalysis ?? analysisRes.data);
-            } catch (err) {
-                setError(err.response?.data?.error || 'Failed to load company analysis data.');
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchData();
     }, [id]);
+
+    const handleRerun = async () => {
+        setRerunning(true);
+        try {
+            await applicationsAPI.rerunAnalysis(id);
+            showToast('success', 'Analysis re-run successfully! Data refreshed.');
+            // Re-fetch both app and analysis to update all charts
+            await fetchData();
+        } catch (err) {
+            const msg = err.response?.data?.error || 'Re-run failed. Please try again.';
+            showToast('error', msg);
+        } finally {
+            setRerunning(false);
+        }
+    };
 
     // Build revenue chart data from real PDF multi-year data
     const revenueChartData = buildRevenueChart(analysis);
@@ -169,6 +191,19 @@ export default function CompanyAnalysis() {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-8">
+            {/* Toast Notification */}
+            {toast && (
+                <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl text-sm font-medium transition-all animate-fade-in ${toast.type === 'success'
+                        ? 'bg-emerald-950 border-emerald-500/30 text-emerald-300'
+                        : 'bg-red-950 border-red-500/30 text-red-300'
+                    }`}>
+                    {toast.type === 'success'
+                        ? <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+                        : <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />}
+                    {toast.message}
+                </div>
+            )}
+
             {/* Header Profile */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-brand-blue/5 to-transparent pointer-events-none" />
@@ -204,6 +239,17 @@ export default function CompanyAnalysis() {
                         </div>
                     )}
                     <div className="flex gap-2">
+                        {analysis && (
+                            <button
+                                onClick={handleRerun}
+                                disabled={rerunning}
+                                className="px-4 py-2.5 bg-slate-700 border border-slate-600 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm font-semibold flex items-center gap-2"
+                            >
+                                {rerunning
+                                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Re-Running...</>
+                                    : <><RefreshCw className="h-4 w-4" /> Re-Run Analysis</>}
+                            </button>
+                        )}
                         <button onClick={() => navigate(`/applications/${id}/ai-research`)} className="px-4 py-2.5 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white rounded-lg transition-all text-sm font-semibold">
                             AI Research
                         </button>

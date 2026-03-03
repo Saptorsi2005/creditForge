@@ -526,11 +526,246 @@ const getStatus = async (req, res, next) => {
   }
 };
 
+/**
+ * Re-run analysis for an existing application
+ *
+ * POST /applications/:id/rerun-analysis
+ * - Finds the application and its documents
+ * - Re-runs the full pipeline (research → financial → risk → CAM)
+ * - Updates existing records via prisma.update (NOT create) to avoid duplicates
+ * - Wrapped in a transaction for safety
+ * - Returns 400 if analysis does not yet exist
+ */
+const rerunAnalysis = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    console.log('[RerunAnalysis] Starting for application:', id);
+
+    // Pre-check: application must exist with documents
+    const appCheck = await prisma.application.findUnique({
+      where: { id },
+      include: { documents: true, companyAnalysis: true },
+    });
+
+    if (!appCheck) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    if (req.user.role === 'VIEWER' && appCheck.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (!appCheck.companyAnalysis) {
+      return res.status(400).json({
+        error: 'No existing analysis found. Please run the initial analysis first.',
+      });
+    }
+
+    // Run AI research OUTSIDE the transaction (external API, cannot be rolled back)
+    console.log('[RerunAnalysis] Running AI research...');
+    const aiResearchData = await researchService.analyzeCompany(
+      appCheck.companyName,
+      appCheck.pan,
+      appCheck.documents
+    );
+
+    // Everything that writes to DB goes inside the transaction
+    const result = await prisma.$transaction(async (tx) => {
+
+      // Mark as PROCESSING
+      await tx.application.update({
+        where: { id },
+        data: { status: 'PROCESSING' },
+      });
+
+      // Load documents fresh inside tx
+      const docs = await tx.document.findMany({ where: { applicationId: id } });
+
+      // Update AIResearch (NOT upsert — record must already exist from initial run)
+      const existingResearch = await tx.aIResearch.findUnique({ where: { applicationId: id } });
+      let aiResearchRecord;
+      if (existingResearch) {
+        aiResearchRecord = await tx.aIResearch.update({
+          where: { applicationId: id },
+          data: { ...aiResearchData },
+        });
+      } else {
+        // Fallback: create if somehow missing
+        aiResearchRecord = await tx.aIResearch.create({
+          data: { applicationId: id, ...aiResearchData },
+        });
+      }
+      console.log('[RerunAnalysis] AIResearch updated');
+
+      // Build financial data from uploaded documents
+      const financialDoc = docs.find(
+        (d) => d.documentType === 'FINANCIAL_STATEMENT' ||
+          d.documentType === 'BALANCE_SHEET' ||
+          d.documentType === 'PL_STATEMENT'
+      );
+      const gstDoc = docs.find((d) => d.documentType === 'GST_RETURN');
+      const bankDoc = docs.find((d) => d.documentType === 'BANK_STATEMENT');
+
+      const fd = financialDoc?.extractedData?.financialData || {};
+
+      // GST-Bank reconciliation
+      let gstRevenue = gstDoc?.extractedData?.totalTurnover || null;
+      let bankRevenue = bankDoc?.extractedData?.totalCredits || null;
+      let revenueMismatch = null;
+      let mismatchFlag = false;
+
+      const settings = await tx.settings.findFirst({ where: { isActive: true } });
+      const mismatchThreshold = settings?.mismatchThreshold ?? 15;
+
+      if (gstRevenue && bankRevenue && gstRevenue !== 0) {
+        revenueMismatch = parseFloat(
+          (Math.abs((gstRevenue - bankRevenue) / gstRevenue) * 100).toFixed(2)
+        );
+        mismatchFlag = revenueMismatch > mismatchThreshold;
+      }
+
+      // Update CompanyAnalysis (NOT create)
+      const caPayload = {
+        revenue: fd.revenue ?? null,
+        revenueGrowth: fd.revenueGrowth ?? null,
+        ebitda: fd.ebitda ?? null,
+        ebitdaMargin: fd.ebitdaMargin ?? null,
+        netProfit: fd.netProfit ?? null,
+        netProfitMargin: fd.netProfitMargin ?? null,
+        totalAssets: fd.totalAssets ?? null,
+        totalDebt: fd.totalDebt ?? null,
+        netWorth: fd.netWorth ?? null,
+        debtToEquity: fd.debtToEquity ?? null,
+        currentRatio: fd.currentRatio ?? null,
+        multiYearRevenue: fd.multiYearRevenue ?? null,
+        gstRevenue,
+        bankRevenue,
+        revenueMismatch,
+        mismatchFlag,
+      };
+
+      const companyAnalysisRecord = await tx.companyAnalysis.update({
+        where: { applicationId: id },
+        data: caPayload,
+      });
+      console.log('[RerunAnalysis] CompanyAnalysis updated');
+
+      // Recalculate risk score
+      const riskScoreData = await riskService.calculateRiskScore(
+        appCheck,
+        companyAnalysisRecord,
+        aiResearchRecord,
+        settings
+      );
+
+      // Update RiskScore (NOT create)
+      const riskPayload = {
+        compositeScore: riskScoreData.compositeScore,
+        riskLevel: riskScoreData.riskLevel,
+        revenueStability: riskScoreData.revenueStability,
+        debtRatio: riskScoreData.debtRatio,
+        litigationScore: riskScoreData.litigationScore,
+        promoterScore: riskScoreData.promoterScore,
+        sectorScore: riskScoreData.sectorScore,
+        weights: riskScoreData.weights,
+        factorBreakdown: riskScoreData.factorBreakdown,
+        deductions: riskScoreData.deductions || [],
+        character: riskScoreData.character,
+        capacity: riskScoreData.capacity,
+        capital: riskScoreData.capital,
+        collateral: riskScoreData.collateral,
+        conditions: riskScoreData.conditions,
+        recommendation: riskScoreData.recommendation,
+        recommendationReason: riskScoreData.recommendationReason,
+      };
+
+      const existingRisk = await tx.riskScore.findUnique({ where: { applicationId: id } });
+      let riskScoreRecord;
+      if (existingRisk) {
+        riskScoreRecord = await tx.riskScore.update({
+          where: { applicationId: id },
+          data: riskPayload,
+        });
+      } else {
+        riskScoreRecord = await tx.riskScore.create({
+          data: { applicationId: id, ...riskPayload },
+        });
+      }
+      console.log('[RerunAnalysis] RiskScore updated, compositeScore:', riskScoreData.compositeScore);
+
+      // Regenerate CAM report
+      const camData = await camService.generateCAMReport(
+        appCheck,
+        companyAnalysisRecord,
+        aiResearchRecord,
+        riskScoreRecord
+      );
+
+      const existingCam = await tx.camReport.findUnique({ where: { applicationId: id } });
+      let camReportRecord;
+      if (existingCam) {
+        camReportRecord = await tx.camReport.update({
+          where: { applicationId: id },
+          data: { ...camData, pdfGenerated: false, pdfPath: null },
+        });
+      } else {
+        camReportRecord = await tx.camReport.create({
+          data: { applicationId: id, ...camData },
+        });
+      }
+      console.log('[RerunAnalysis] CamReport updated');
+
+      // Determine final status from score
+      const score = riskScoreData.compositeScore;
+      const autoApprove = settings?.autoApprovalScore ?? 75;
+      const autoReject = settings?.autoRejectScore ?? 30;
+
+      let finalStatus = 'COMPLETED';
+      if (score >= autoApprove) finalStatus = 'APPROVED';
+      else if (score <= autoReject) finalStatus = 'REJECTED';
+
+      const updatedApp = await tx.application.update({
+        where: { id },
+        data: {
+          status: finalStatus,
+          aiScore: riskScoreData.compositeScore,
+          completedAt: new Date(),
+        },
+      });
+
+      console.log('[RerunAnalysis] Done. finalStatus:', finalStatus, 'aiScore:', riskScoreData.compositeScore);
+
+      return {
+        application: updatedApp,
+        companyAnalysis: companyAnalysisRecord,
+        aiResearch: aiResearchRecord,
+        riskScore: riskScoreRecord,
+        camReport: camReportRecord,
+      };
+    }); // end $transaction
+
+    res.json({
+      message: 'Re-run analysis completed successfully',
+      ...result,
+    });
+  } catch (error) {
+    console.error('[RerunAnalysis] Error:', error.message);
+    // Best-effort: restore a non-PROCESSING status
+    try {
+      await prisma.application.update({
+        where: { id },
+        data: { status: 'FAILED' },
+      });
+    } catch (_) { /* ignore */ }
+    next(error);
+  }
+};
+
 module.exports = {
   createApplication,
   getApplications,
   getApplication,
   uploadDocuments,
   analyzeApplication,
+  rerunAnalysis,
   getStatus,
 };

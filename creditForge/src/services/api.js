@@ -59,6 +59,7 @@ export const applicationsAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   analyze: (id) => api.post(`/applications/${id}/analyze`),
+  rerunAnalysis: (id) => api.post(`/applications/${id}/rerun-analysis`),
   getStatus: (id) => api.get(`/applications/${id}/status`),
 };
 

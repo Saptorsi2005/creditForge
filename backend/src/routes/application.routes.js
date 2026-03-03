@@ -8,6 +8,7 @@ const {
   getApplication,
   uploadDocuments,
   analyzeApplication,
+  rerunAnalysis,
   getStatus,
 } = require('../controllers/application.controller');
 
@@ -70,6 +71,12 @@ router.post('/:id/documents', authenticate, authorize('ADMIN', 'ANALYST'), uploa
  * Analyze application — Admin and Analyst only
  */
 router.post('/:id/analyze', authenticate, authorize('ADMIN', 'ANALYST'), analyzeApplication);
+
+/**
+ * POST /api/applications/:id/rerun-analysis
+ * Re-run analysis for an existing application — Admin and Analyst only
+ */
+router.post('/:id/rerun-analysis', authenticate, authorize('ADMIN', 'ANALYST'), rerunAnalysis);
 
 /**
  * GET /api/applications/:id/status
