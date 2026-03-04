@@ -493,7 +493,7 @@ export default function CompanyAnalysis() {
     }
 
     const score = app?.aiScore ?? app?.riskScore?.compositeScore ?? null;
-    const scoreColor = score >= 75 ? 'text-emerald-400' : score >= 50 ? 'text-brand-yellow' : 'text-red-400';
+    const scoreColor = score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-brand-yellow' : 'text-red-400';
 
     // Determine if any manual overrides are active
     const hasOverrides = analysis?.financialOverrides &&

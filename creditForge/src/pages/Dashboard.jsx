@@ -312,7 +312,7 @@ export default function Dashboard() {
                                                         <div className="flex items-center space-x-3">
                                                             <div className="w-full bg-slate-800 rounded-full h-1.5 max-w-[80px] overflow-hidden">
                                                                 <div
-                                                                    className={`h-full rounded-full ${score >= 75 ? 'bg-emerald-500' : score >= 50 ? 'bg-brand-yellow' : 'bg-red-500'}`}
+                                                                    className={`h-full rounded-full ${score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-brand-yellow' : 'bg-red-500'}`}
                                                                     style={{ width: `${Math.min(score, 100)}%` }}
                                                                 />
                                                             </div>

@@ -14,9 +14,31 @@ const createApplication = async (req, res, next) => {
   try {
     const { companyName, pan, gstin, cin, loanAmount, loanPurpose, sector } = req.body;
 
-    // Generate unique application number — use timestamp suffix to avoid race conditions
-    const count = await prisma.application.count();
-    const applicationNo = `CRF${new Date().getFullYear()}${String(count + 1).padStart(6, '0')}`;
+    // Generate unique application number — find the highest existing number and increment
+    const year = new Date().getFullYear();
+    const prefix = `CRF${year}`;
+    
+    const lastApplication = await prisma.application.findFirst({
+      where: {
+        applicationNo: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        applicationNo: 'desc',
+      },
+      select: {
+        applicationNo: true,
+      },
+    });
+
+    let nextNumber = 1;
+    if (lastApplication) {
+      const lastNumber = parseInt(lastApplication.applicationNo.substring(prefix.length));
+      nextNumber = lastNumber + 1;
+    }
+    
+    const applicationNo = `${prefix}${String(nextNumber).padStart(6, '0')}`;
 
     const application = await prisma.application.create({
       data: {

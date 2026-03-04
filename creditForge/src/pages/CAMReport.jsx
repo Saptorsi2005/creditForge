@@ -110,7 +110,7 @@ export default function CAMReport() {
 
     const recBgColor = recommendation === 'APPROVE' ? 'bg-emerald-600' : recommendation === 'REJECT' ? 'bg-red-600' : 'bg-brand-yellow';
 
-    const scoreColor = aiScore >= 75 ? 'text-emerald-700' : aiScore >= 50 ? 'text-amber-700' : 'text-red-700';
+    const scoreColor = aiScore >= 80 ? 'text-emerald-700' : aiScore >= 60 ? 'text-amber-700' : 'text-red-700';
 
     // Build financial table rows
     const finRows = [

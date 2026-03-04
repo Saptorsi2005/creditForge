@@ -9,13 +9,13 @@ function Skeleton({ className = '' }) {
 }
 
 function scoreColor(score) {
-    if (score >= 75) return 'text-emerald-400';
-    if (score >= 50) return 'text-brand-yellow';
+    if (score >= 80) return 'text-emerald-400';
+    if (score >= 60) return 'text-brand-yellow';
     return 'text-red-400';
 }
 function barColor(score) {
-    if (score >= 75) return 'bg-emerald-500';
-    if (score >= 50) return 'bg-brand-yellow';
+    if (score >= 80) return 'bg-emerald-500';
+    if (score >= 60) return 'bg-brand-yellow';
     return 'bg-red-500';
 }
 function ringColor(riskLevel) {

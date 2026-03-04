@@ -68,16 +68,24 @@ const getStats = async (req, res, next) => {
 
     // Risk distribution — classify by compositeScore, not riskLevel enum
     // >= 80 → LOW,  60–79 → MEDIUM,  < 60 → HIGH
+    // Only count risk scores for existing applications
     const allRiskScores = await prisma.riskScore.findMany({
-      select: { compositeScore: true },
+      select: {
+        compositeScore: true,
+        application: {
+          select: { id: true },
+        },
+      },
     });
 
     const riskDistribution = { LOW: 0, MEDIUM: 0, HIGH: 0 };
-    allRiskScores.forEach(({ compositeScore }) => {
-      if (compositeScore >= 80) riskDistribution.LOW++;
-      else if (compositeScore >= 60) riskDistribution.MEDIUM++;
-      else riskDistribution.HIGH++;
-    });
+    allRiskScores
+      .filter((rs) => rs.application) // Only count if application exists
+      .forEach(({ compositeScore }) => {
+        if (compositeScore >= 80) riskDistribution.LOW++;
+        else if (compositeScore >= 60) riskDistribution.MEDIUM++;
+        else riskDistribution.HIGH++;
+      });
 
     // Debug logs — safe to keep, minimal overhead
     console.log('[Dashboard Stats] totalApplications:', totalApplications,
