@@ -5,12 +5,13 @@
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "nodemon --ext js,mjs,cjs,json,env src/index.js",
+    "dev": "npx prisma generate && nodemon --ext js,mjs,cjs,json,env src/index.js",
     "start": "node src/index.js",
     "seed": "node prisma/seed.js",
     "migrate": "npx prisma migrate dev",
     "generate": "npx prisma generate",
-    "studio": "npx prisma studio"
+    "studio": "npx prisma studio",
+    "postinstall": "prisma generate"
   },
   "keywords": [
     "fintech",
