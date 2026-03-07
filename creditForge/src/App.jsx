@@ -10,6 +10,7 @@ import CompanyAnalysis from './pages/CompanyAnalysis';
 import AIResearch from './pages/AIResearch';
 import RiskScoring from './pages/RiskScoring';
 import CAMReport from './pages/CAMReport';
+import RecommendationEngine from './pages/RecommendationEngine';
 import Settings from './pages/Settings';
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
             <Route path="applications/:id/company-analysis" element={<CompanyAnalysis />} />
             <Route path="applications/:id/ai-research" element={<AIResearch />} />
             <Route path="applications/:id/risk-scoring" element={<RiskScoring />} />
+            <Route path="applications/:id/recommendation-engine" element={<RecommendationEngine />} />
             <Route path="applications/:id/cam-report" element={<CAMReport />} />
 
             {/* Legacy flat routes redirect to dashboard */}

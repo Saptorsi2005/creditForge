@@ -669,6 +669,16 @@ class CAMService {
         doc.moveDown();
         doc.fontSize(12).font('CustomFont-Bold').text(`Decision: ${camReport.recommendation}`);
 
+        const justification = camReport.recommendationReason || application?.riskScore?.recommendationReason;
+
+        if (justification) {
+          doc.moveDown(0.5);
+          doc.fontSize(10).font('CustomFont').text(justification, {
+            width: 450,
+            align: 'left'
+          });
+        }
+
         if (camReport.recommendedAmount) {
           doc.fontSize(11).font('CustomFont')
             .text(`Recommended Loan Amount: ₹ ${this.formatCurrency(camReport.recommendedAmount / 10000000)} Cr`);

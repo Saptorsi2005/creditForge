@@ -99,8 +99,8 @@ export default function CAMReport() {
     const loanAmount = cam?.loanAmount ?? app?.loanAmount ?? null;
     const loanPurpose = cam?.loanPurpose ?? app?.loanPurpose ?? '—';
     const sector = cam?.sector ?? app?.sector ?? '—';
-    const aiScore = cam?.compositeScore ?? cam?.aiScore ?? null;
-    const riskLevel = cam?.riskLevel ?? '—';
+    const aiScore = cam?.compositeScore ?? cam?.aiScore ?? app?.aiScore ?? null;
+    const riskLevel = cam?.riskLevel ?? app?.riskScore?.riskLevel ?? '—';
     const recommendation = cam?.recommendation ?? '—';
     const executiveSummary = cam?.executiveSummary ?? '';
     const strengths = cam?.strengths ?? [];
@@ -286,8 +286,8 @@ export default function CAMReport() {
                                 {recommendation}
                             </div>
                             <p className="text-slate-800 leading-relaxed font-medium">
-                                {cam?.recommendationReason
-                                    ? cam.recommendationReason
+                                {cam?.recommendationReason || app?.riskScore?.recommendationReason
+                                    ? (cam?.recommendationReason || app?.riskScore?.recommendationReason)
                                     : `Based on the comprehensive AI assessment with a composite score of ${aiScore != null ? fmt(aiScore) : '—'}/100 (${riskLevel} risk), the credit facility of ${fmtCr(loanAmount)} is recommended for ${recommendation}.`}
                             </p>
                         </div>

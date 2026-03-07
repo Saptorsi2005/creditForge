@@ -36,6 +36,7 @@ export default function Sidebar() {
         { name: 'Company Analysis', href: analysisHref('company-analysis'), icon: Building2, permission: 'view' },
         { name: 'AI Research', href: analysisHref('ai-research'), icon: BrainCircuit, permission: 'view' },
         { name: 'Risk Engine', href: analysisHref('risk-scoring'), icon: Activity, permission: 'view' },
+        { name: 'Recommendation Engine', href: analysisHref('recommendation-engine'), icon: BrainCircuit, permission: 'view' },
         { name: 'CAM Report', href: analysisHref('cam-report'), icon: FileText, permission: 'view' },
         { name: 'Settings', href: '/settings', icon: Settings, permission: 'settings' },
     ];
@@ -96,7 +97,7 @@ export default function Sidebar() {
             <div className="flex-1 px-3 space-y-0.5 overflow-y-auto">
                 {filteredNavigation.map((item) => {
                     // Analysis items have an appId baked into their href already
-                    const needsAppId = ['Company Analysis', 'AI Research', 'Risk Engine', 'CAM Report'].includes(item.name);
+                    const needsAppId = ['Company Analysis', 'AI Research', 'Risk Engine', 'Recommendation Engine', 'CAM Report'].includes(item.name);
                     const isDisabled = needsAppId && !lastAppId;
 
                     const isActive = !isDisabled && location.pathname.startsWith(item.href) && item.href !== '/dashboard';

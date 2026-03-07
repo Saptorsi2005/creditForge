@@ -77,6 +77,7 @@ const getRiskScore = async (req, res, next) => {
           select: {
             companyName: true,
             applicationNo: true,
+            loanAmount: true,
           },
         },
       },
@@ -106,6 +107,11 @@ const getCAMReport = async (req, res, next) => {
           select: {
             companyName: true,
             applicationNo: true,
+            loanAmount: true,
+            loanPurpose: true,
+            sector: true,
+            aiScore: true,
+            riskScore: true,
           },
         },
       },
@@ -165,6 +171,7 @@ const getCAMReport = async (req, res, next) => {
             select: {
               companyName: true,
               applicationNo: true,
+              riskScore: true,
             },
           },
         },

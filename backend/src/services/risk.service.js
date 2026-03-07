@@ -563,22 +563,22 @@ class RiskService {
     let recommendation = 'CONDITIONAL';
     let reason = '';
 
+    // Extract top concerns and strengths for professional reasoning
+    const majorConcerns = deductions?.slice(0, 2).map(d => d.factor) || [];
+
     if (score >= autoApprove) {
       recommendation = 'APPROVE';
       reason = `Strong credit profile with composite score of ${score.toFixed(2)}. All key metrics within acceptable range.`;
     } else if (score <= autoReject) {
       recommendation = 'REJECT';
-      reason = `High risk profile with composite score of ${score.toFixed(2)}. `;
-      if (deductions.length > 0) {
-        reason += `Major concerns: ${deductions.slice(0, 2).map(d => d.factor).join(', ')}.`;
-      }
+      reason = `Rejected due to ${majorConcerns.length > 0 ? majorConcerns.join(' and ') : 'high cumulative risk factors'} detected in secondary and primary analysis.`;
     } else {
       recommendation = 'CONDITIONAL';
-      reason = `Moderate risk profile with score of ${score.toFixed(2)}. `;
-      if (deductions.length > 0) {
-        reason += `Recommend approval with conditions to mitigate: ${deductions.slice(0, 2).map(d => d.factor).join(', ')}.`;
+      // "X despite Y" logic for conditional cases
+      if (majorConcerns.length > 0) {
+        reason = `Recommended for CONDITIONAL support due to ${majorConcerns.join(' and ')} concerns, despite ${score > 50 ? 'stable financial indicators' : 'moderate business activity'} observed in primary documents.`;
       } else {
-        reason += 'Recommend approval with standard monitoring.';
+        reason = `Moderate risk profile with score of ${score.toFixed(2)}. Recommend approval with standard monitoring and conditions.`;
       }
     }
 
