@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, Eye, EyeOff, Mail, Lock, User, UserCircle } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, UserCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import logoSvg from '../assets/logo.svg';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -27,10 +28,7 @@ export default function Signup() {
   ];
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
   };
 
@@ -39,13 +37,11 @@ export default function Signup() {
     setLoading(true);
     setError('');
 
-    // Validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
       return;
     }
-
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
       setLoading(false);
@@ -61,233 +57,196 @@ export default function Signup() {
 
     if (result.success) {
       setSuccess(true);
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+      setTimeout(() => navigate('/login'), 2000);
     } else {
       setError(result.error);
     }
-
     setLoading(false);
   };
 
+  const inputStyle = {
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.08)',
+  };
+  const inputFocus = (e) => e.target.style.borderColor = 'rgba(16,185,129,0.5)';
+  const inputBlur = (e) => e.target.style.borderColor = 'rgba(255,255,255,0.08)';
+  const inputClass = "block w-full pl-10 pr-4 py-3 rounded-xl text-white text-sm placeholder-slate-600 transition-all duration-150";
+
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-2xl p-8 shadow-2xl text-center">
-            <div className="inline-flex items-center justify-center bg-green-500/10 p-4 rounded-full border border-green-500/20 mb-4">
-              <svg className="h-12 w-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-semibold text-white mb-2">Registration Successful!</h2>
-            <p className="text-slate-400 mb-4">Redirecting to login page...</p>
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+      <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
+        style={{ backgroundColor: '#030000' }}>
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[80%] bg-emerald-600/25 blur-[160px] pointer-events-none rounded-full mix-blend-screen z-0" />
+        <div className="text-center relative z-10">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl mb-5"
+            style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
+            <CheckCircle2 className="h-8 w-8 text-emerald-400" />
           </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Account Created!</h2>
+          <p className="text-slate-400 mb-4">Redirecting to sign in...</p>
+          <div className="w-6 h-6 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin mx-auto" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo and Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center bg-blue-500/10 p-3 rounded-2xl border border-blue-500/20 mb-4">
-            <ShieldCheck className="h-10 w-10 text-blue-500" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">CreditForge AI</h1>
-          <p className="text-slate-400 text-sm">Create your account</p>
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
+      style={{ backgroundColor: '#030000' }}>
+      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[80%] bg-emerald-600/25 blur-[160px] pointer-events-none rounded-full mix-blend-screen z-0" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-900/20 blur-[120px] pointer-events-none rounded-full mix-blend-screen z-0" />
+      <div className="absolute top-[20%] left-[20%] w-[40%] h-[40%] bg-teal-600/10 blur-[140px] pointer-events-none rounded-full mix-blend-screen z-0" />
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <img src={logoSvg} alt="CreditForge" className="h-16 mb-4" />
+          <h1 className="text-2xl font-bold text-white">Create your account</h1>
+          <p className="text-sm text-slate-500 mt-1">Join CreditForge AI Platform</p>
         </div>
 
-        {/* Signup Card */}
-        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-2xl p-8 shadow-2xl">
-          <h2 className="text-2xl font-semibold text-white mb-6">Sign Up</h2>
+        {/* Card */}
+        <div className="rounded-2xl p-8"
+          style={{
+            background: 'rgba(11,17,32,0.8)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)'
+          }}>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <p className="text-red-400 text-sm">{error}</p>
+            <div className="mb-5 px-4 py-3 rounded-xl text-sm text-emerald-300 flex items-center space-x-2"
+              style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Name Field */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Full Name */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-2">
-                Full Name
-              </label>
+              <label htmlFor="name" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Full Name</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-slate-500" />
-                </div>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="block w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  placeholder="John Doe"
-                />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <input id="name" name="name" type="text" required
+                  value={formData.name} onChange={handleChange}
+                  className={inputClass} style={inputStyle}
+                  onFocus={inputFocus} onBlur={inputBlur}
+                  placeholder="Jane Smith" />
               </div>
             </div>
 
-            {/* Email Field */}
+            {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-                Email Address
-              </label>
+              <label htmlFor="email" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-500" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="block w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  placeholder="you@example.com"
-                />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <input id="email" name="email" type="email" required
+                  value={formData.email} onChange={handleChange}
+                  className={inputClass} style={inputStyle}
+                  onFocus={inputFocus} onBlur={inputBlur}
+                  placeholder="you@company.com" />
               </div>
             </div>
 
-            {/* Role Selector */}
+            {/* Role */}
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-slate-300 mb-2">
-                Role
-              </label>
+              <label htmlFor="role" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Role</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <UserCircle className="h-5 w-5 text-slate-500" />
-                </div>
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="block w-full pl-10 pr-10 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition appearance-none cursor-pointer"
-                >
+                <UserCircle className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <select id="role" name="role" value={formData.role} onChange={handleChange}
+                  className={`${inputClass} pr-10 appearance-none cursor-pointer`} style={inputStyle}
+                  onFocus={inputFocus} onBlur={inputBlur}>
                   {roles.map((role) => (
-                    <option key={role.value} value={role.value} className="bg-slate-800">
-                      {role.label} - {role.description}
+                    <option key={role.value} value={role.value} className="bg-slate-900">
+                      {role.label} — {role.description}
                     </option>
                   ))}
                 </select>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
               </div>
             </div>
 
-            {/* Password Field */}
+            {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
-                Password
-              </label>
+              <label htmlFor="password" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Password</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-500" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="block w-full pl-10 pr-12 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300 transition"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <input id="password" name="password"
+                  type={showPassword ? 'text' : 'password'} required
+                  value={formData.password} onChange={handleChange}
+                  className={`${inputClass} pr-12`} style={inputStyle}
+                  onFocus={inputFocus} onBlur={inputBlur}
+                  placeholder="••••••••" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            {/* Confirm Password Field */}
+            {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-300 mb-2">
-                Confirm Password
-              </label>
+              <label htmlFor="confirmPassword" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Confirm Password</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-500" />
-                </div>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="block w-full pl-10 pr-12 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300 transition"
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <input id="confirmPassword" name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'} required
+                  value={formData.confirmPassword} onChange={handleChange}
+                  className={`${inputClass} pr-12`} style={inputStyle}
+                  onFocus={inputFocus} onBlur={inputBlur}
+                  placeholder="••••••••" />
+                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+              type="submit" disabled={loading}
+              className="w-full py-3 px-4 rounded-xl text-sm font-semibold text-white transition-all duration-200 flex items-center justify-center space-x-2 mt-2"
+              style={{
+                background: loading ? 'rgba(16,185,129,0.5)' : 'linear-gradient(135deg, #10b981, #047857)',
+                boxShadow: loading ? 'none' : '0 4px 20px rgba(16,185,129,0.4)',
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+              onMouseEnter={e => { if (!loading) e.currentTarget.style.boxShadow = '0 4px 28px rgba(16,185,129,0.55)'; }}
+              onMouseLeave={e => { if (!loading) e.currentTarget.style.boxShadow = '0 4px 20px rgba(16,185,129,0.4)'; }}
             >
               {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Creating account...
-                </span>
+                  <span>Creating account...</span>
+                </>
               ) : (
-                'Create Account'
+                <>
+                  <span>Create Account</span>
+                  <ArrowRight className="h-4 w-4" />
+                </>
               )}
             </button>
           </form>
 
-          {/* Login Link */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-slate-400">
-              Already have an account?{' '}
-              <Link to="/login" className="text-blue-500 hover:text-blue-400 font-medium transition">
-                Sign in
-              </Link>
-            </p>
-          </div>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold transition-colors" style={{ color: '#6ee7b7' }}
+              onMouseEnter={e => e.target.style.color = '#10b981'}
+              onMouseLeave={e => e.target.style.color = '#6ee7b7'}>
+              Sign in
+            </Link>
+          </p>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-slate-600 mt-6">
-          © 2026 CreditForge AI. All rights reserved.
-        </p>
+        <p className="text-center text-xs text-slate-700 mt-6">© 2026 CreditForge AI. All rights reserved.</p>
       </div>
     </div>
   );

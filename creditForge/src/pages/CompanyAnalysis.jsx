@@ -176,7 +176,7 @@ function EditFinancialsModal({ analysis, onClose, onSave, saving, onReset, reset
     };
 
     const inputCls = (key) =>
-        `w-full bg-slate-950 border ${errors[key] ? 'border-red-500/60' : 'border-slate-700'} rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none focus:border-brand-blue placeholder-slate-700 transition-colors`;
+        `w-full bg-slate-950 border ${errors[key] ? 'border-emerald-500/60' : 'border-slate-700'} rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none focus:border-brand-blue placeholder-slate-700 transition-colors`;
 
     const rowCls = (key, extractedRaw) =>
         isChanged(fields[key], extractedRaw)
@@ -228,7 +228,7 @@ function EditFinancialsModal({ analysis, onClose, onSave, saving, onReset, reset
                                             onChange={e => setFields(f => ({ ...f, [key]: e.target.value }))}
                                             className={inputCls(key)}
                                         />
-                                        {errors[key] && <p className="text-xs text-red-400 mt-0.5">{errors[key]}</p>}
+                                        {errors[key] && <p className="text-xs text-emerald-400 mt-0.5">{errors[key]}</p>}
                                     </div>
                                 </div>
                             ))}
@@ -260,7 +260,7 @@ function EditFinancialsModal({ analysis, onClose, onSave, saving, onReset, reset
                                                     onChange={e => setMyrRows(rows => rows.map((r, idx) => idx === i ? { ...r, revenue: e.target.value } : r))}
                                                     className={inputCls(`myr_rev_${i}`)}
                                                 />
-                                                {errors[`myr_rev_${i}`] && <p className="text-xs text-red-400 mt-0.5">{errors[`myr_rev_${i}`]}</p>}
+                                                {errors[`myr_rev_${i}`] && <p className="text-xs text-emerald-400 mt-0.5">{errors[`myr_rev_${i}`]}</p>}
                                             </div>
                                             <span className="text-sm text-slate-500 font-mono">{fmtCrModal(toCr(row.extEbitda))}</span>
                                             <div>
@@ -269,7 +269,7 @@ function EditFinancialsModal({ analysis, onClose, onSave, saving, onReset, reset
                                                     onChange={e => setMyrRows(rows => rows.map((r, idx) => idx === i ? { ...r, ebitda: e.target.value } : r))}
                                                     className={inputCls(`myr_ebitda_${i}`)}
                                                 />
-                                                {errors[`myr_ebitda_${i}`] && <p className="text-xs text-red-400 mt-0.5">{errors[`myr_ebitda_${i}`]}</p>}
+                                                {errors[`myr_ebitda_${i}`] && <p className="text-xs text-emerald-400 mt-0.5">{errors[`myr_ebitda_${i}`]}</p>}
                                             </div>
                                         </div>
                                     );
@@ -282,16 +282,16 @@ function EditFinancialsModal({ analysis, onClose, onSave, saving, onReset, reset
                     <div>
                         <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                             Reason for Manual Adjustment
-                            {hasAnyChange && <span className="ml-1 text-red-400">*</span>}
+                            {hasAnyChange && <span className="ml-1 text-emerald-400">*</span>}
                         </label>
                         <textarea
                             rows={3}
                             placeholder="e.g. Correcting PDF extraction error — verified against audited financials FY2024..."
                             value={reason}
                             onChange={e => setReason(e.target.value)}
-                            className={`w-full bg-slate-950 border ${errors.reason ? 'border-red-500/60' : 'border-slate-700'} rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-blue placeholder-slate-600 resize-none transition-colors`}
+                            className={`w-full bg-slate-950 border ${errors.reason ? 'border-emerald-500/60' : 'border-slate-700'} rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-blue placeholder-slate-600 resize-none transition-colors`}
                         />
-                        {errors.reason && <p className="text-xs text-red-400 mt-1">{errors.reason}</p>}
+                        {errors.reason && <p className="text-xs text-emerald-400 mt-1">{errors.reason}</p>}
                         {ov.overriddenAt && (
                             <p className="text-xs text-slate-500 mt-1">
                                 Last override: {new Date(ov.overriddenAt).toLocaleString('en-IN')}
@@ -304,13 +304,13 @@ function EditFinancialsModal({ analysis, onClose, onSave, saving, onReset, reset
                 {/* Footer */}
                 <div className="shrink-0 border-t border-slate-800 px-6 py-4">
                     {confirmReset ? (
-                        <div className="flex items-center justify-between gap-3 bg-red-950/30 border border-red-500/30 rounded-xl px-4 py-3">
-                            <p className="text-sm text-red-300 font-medium">This will remove all overrides and restore extracted values. Risk score will be recalculated.</p>
+                        <div className="flex items-center justify-between gap-3 bg-emerald-950/30 border border-emerald-500/30 rounded-xl px-4 py-3">
+                            <p className="text-sm text-emerald-300 font-medium">This will remove all overrides and restore extracted values. Risk score will be recalculated.</p>
                             <div className="flex gap-2 shrink-0">
                                 <button onClick={() => setConfirmReset(false)} disabled={resetting} className="px-3 py-1.5 text-xs text-slate-300 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
                                     Cancel
                                 </button>
-                                <button onClick={onReset} disabled={resetting} className="px-3 py-1.5 text-xs text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5">
+                                <button onClick={onReset} disabled={resetting} className="px-3 py-1.5 text-xs text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5">
                                     {resetting ? <><Loader2 className="h-3 w-3 animate-spin" /> Resetting...</> : 'Yes, Reset'}
                                 </button>
                             </div>
@@ -319,7 +319,7 @@ function EditFinancialsModal({ analysis, onClose, onSave, saving, onReset, reset
                         <div className="flex items-center justify-between gap-3">
                             <div className="flex gap-2">
                                 {Object.keys(ov).length > 0 && (
-                                    <button onClick={() => setConfirmReset(true)} className="px-3 py-2 text-xs text-red-400 bg-red-950/20 border border-red-500/30 hover:bg-red-950/40 rounded-lg transition-colors font-semibold">
+                                    <button onClick={() => setConfirmReset(true)} className="px-3 py-2 text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-500/30 hover:bg-emerald-950/40 rounded-lg transition-colors font-semibold">
                                         Reset to Extracted Data
                                     </button>
                                 )}
@@ -329,7 +329,7 @@ function EditFinancialsModal({ analysis, onClose, onSave, saving, onReset, reset
                                 <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm text-slate-300 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
                                     Cancel
                                 </button>
-                                <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm text-white bg-brand-blue hover:bg-blue-600 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2">
+                                <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm text-white bg-brand-blue hover:bg-emerald-600 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2">
                                     {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Apply Override'}
                                 </button>
                             </div>
@@ -483,7 +483,7 @@ export default function CompanyAnalysis() {
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center py-24 space-y-4">
-                <AlertCircle className="h-12 w-12 text-red-400" />
+                <AlertCircle className="h-12 w-12 text-red-500" />
                 <p className="text-slate-400 text-center max-w-md">{error}</p>
                 <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm">
                     <ArrowLeft className="h-4 w-4" /> Back to Dashboard
@@ -493,7 +493,7 @@ export default function CompanyAnalysis() {
     }
 
     const score = app?.aiScore ?? app?.riskScore?.compositeScore ?? null;
-    const scoreColor = score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-brand-yellow' : 'text-red-400';
+    const scoreColor = score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-brand-yellow' : 'text-red-500';
 
     // Determine if any manual overrides are active
     const hasOverrides = analysis?.financialOverrides &&
@@ -523,11 +523,11 @@ export default function CompanyAnalysis() {
             {toast && (
                 <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl text-sm font-medium transition-all animate-fade-in ${toast.type === 'success'
                     ? 'bg-emerald-950 border-emerald-500/30 text-emerald-300'
-                    : 'bg-red-950 border-red-500/30 text-red-300'
+                    : 'bg-red-950 border-red-500/30 text-red-400'
                     }`}>
                     {toast.type === 'success'
                         ? <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-                        : <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />}
+                        : <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />}
                     {toast.message}
                 </div>
             )}
@@ -546,7 +546,12 @@ export default function CompanyAnalysis() {
                     <div>
                         <div className="flex items-center space-x-3 mb-1">
                             <h1 className="text-2xl font-bold tracking-tight text-white">{app?.companyName ?? 'Loading...'}</h1>
-                            <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${app?.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                            <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${app?.status === 'APPROVED'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : app?.status === 'REJECTED'
+                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                                }`}>
                                 {app?.status?.replace(/_/g, ' ') ?? '—'}
                             </span>
                             {hasOverrides && (
@@ -607,7 +612,7 @@ export default function CompanyAnalysis() {
                         <button onClick={() => navigate(`/applications/${id}/risk-scoring`)} className="px-4 py-2.5 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white rounded-lg transition-all text-sm font-semibold">
                             Risk Engine
                         </button>
-                        <button onClick={() => navigate(`/applications/${id}/cam-report`)} className="px-5 py-2.5 bg-brand-blue hover:bg-blue-600 text-white rounded-lg transition-all text-sm font-semibold shadow-lg shadow-brand-blue/20">
+                        <button onClick={() => navigate(`/applications/${id}/cam-report`)} className="px-5 py-2.5 bg-brand-blue hover:bg-emerald-600 text-white rounded-lg transition-all text-sm font-semibold shadow-lg shadow-brand-blue/20">
                             CAM Report
                         </button>
                     </div>
@@ -741,8 +746,8 @@ export default function CompanyAnalysis() {
                                     <AreaChart data={revenueChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                             </linearGradient>
                                             <linearGradient id="colorEbitda" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
@@ -767,7 +772,7 @@ export default function CompanyAnalysis() {
                                             contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '0.5rem', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.5)' }}
                                             formatter={(value, name) => [`₹ ${parseFloat(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Cr`, name === 'revenue' ? 'Revenue' : 'EBITDA']}
                                         />
-                                        <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                                        <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
                                         <Area type="monotone" dataKey="ebitda" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorEbitda)" />
                                     </AreaChart>
                                 </ResponsiveContainer>
@@ -782,7 +787,7 @@ export default function CompanyAnalysis() {
                                 <Wallet className="h-5 w-5 text-brand-blue" />
                                 GST vs Bank Reconciliation
                                 {analysis?.mismatchFlag && (
-                                    <span className="ml-2 text-xs px-2 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-full font-bold">MISMATCH</span>
+                                    <span className="ml-2 text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full font-bold">MISMATCH</span>
                                 )}
                             </h2>
                             <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-800">
@@ -796,7 +801,7 @@ export default function CompanyAnalysis() {
                                 </div>
                                 <div className="p-4 flex flex-col items-center">
                                     <p className="text-sm font-medium text-slate-400 mb-1">Deviation</p>
-                                    <p className={`text-xl font-bold ${analysis?.mismatchFlag ? 'text-red-400' : 'text-emerald-400'}`}>
+                                    <p className={`text-xl font-bold ${analysis?.mismatchFlag ? 'text-emerald-400' : 'text-emerald-400'}`}>
                                         {fmtPct(analysis?.revenueMismatch)}
                                     </p>
                                 </div>

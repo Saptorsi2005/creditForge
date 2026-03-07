@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <defs>
+    <!-- Navy gradient for C shape -->
+    <linearGradient id="navyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a7a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f1f4a;stop-opacity:1" />
+    </linearGradient>
+    <!-- Orange gradient for F arrow -->
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4852a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#b06010;stop-opacity:1" />
+    </linearGradient>
+    <!-- Silver gradient for top bar -->
+    <linearGradient id="silverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#c8d0dc;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f0f4f8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8a96a8;stop-opacity:1" />
+    </linearGradient>
+    <!-- Drop shadow filter -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- ===== C SHAPE (navy, circuit board style) ===== -->
+  <!-- Main C body - a rotated diamond / chevron shape pointing left -->
+  <!-- Top-left arm of C -->
+  <polygon points="130,95  165,60  220,115  185,150" fill="url(#navyGrad)" filter="url(#shadow)"/>
+  <!-- Bottom-left arm of C -->
+  <polygon points="130,305 185,250  220,285  165,340" fill="url(#navyGrad)" filter="url(#shadow)"/>
+  <!-- Left spine of C -->
+  <polygon points="100,200 130,130 160,160 160,240 130,270" fill="url(#navyGrad)" filter="url(#shadow)"/>
+
+  <!-- Circuit trace dots on C (navy) -->
+  <circle cx="140" cy="155" r="4" fill="#4a7fd4" opacity="0.9"/>
+  <circle cx="140" cy="175" r="4" fill="#4a7fd4" opacity="0.9"/>
+  <circle cx="140" cy="195" r="4" fill="#4a7fd4" opacity="0.9"/>
+  <circle cx="140" cy="215" r="4" fill="#4a7fd4" opacity="0.9"/>
+  <circle cx="140" cy="235" r="4" fill="#4a7fd4" opacity="0.9"/>
+  <!-- Horizontal trace lines -->
+  <line x1="144" y1="175" x2="165" y2="175" stroke="#4a7fd4" stroke-width="2" opacity="0.7"/>
+  <line x1="144" y1="195" x2="172" y2="195" stroke="#4a7fd4" stroke-width="2" opacity="0.7"/>
+  <circle cx="172" cy="195" r="3.5" fill="#4a7fd4" opacity="0.9"/>
+  <line x1="144" y1="215" x2="165" y2="215" stroke="#4a7fd4" stroke-width="2" opacity="0.7"/>
+  <!-- Top arm circuit traces -->
+  <circle cx="165" cy="102" r="4" fill="#4a7fd4" opacity="0.8"/>
+  <circle cx="178" cy="118" r="4" fill="#4a7fd4" opacity="0.8"/>
+  <circle cx="192" cy="132" r="4" fill="#4a7fd4" opacity="0.8"/>
+  <line x1="165" y1="102" x2="178" y2="102" stroke="#4a7fd4" stroke-width="2" opacity="0.6"/>
+  <line x1="178" y1="102" x2="178" y2="118" stroke="#4a7fd4" stroke-width="2" opacity="0.6"/>
+
+  <!-- ===== SILVER BAR (top right) ===== -->
+  <polygon points="210,70 270,70 285,90 225,90" fill="url(#silverGrad)" filter="url(#shadow)" opacity="0.92"/>
+
+  <!-- ===== F ARROW (orange) ===== -->
+  <!-- F arrow pointing left, positioned at the center-right of the chevron -->
+  <!-- Horizontal top bar of F -->
+  <polygon points="210,165 270,165 270,185 210,185" fill="url(#orangeGrad)"/>
+  <!-- Horizontal middle bar of F -->
+  <polygon points="210,200 255,200 255,220 210,220" fill="url(#orangeGrad)"/>
+  <!-- Vertical stem of F (right side) merging into arrow tip -->
+  <polygon points="210,165 230,165 230,245 210,245" fill="url(#orangeGrad)"/>
+  <!-- Arrow head pointing left from F -->
+  <polygon points="195,200 215,175 215,225" fill="url(#orangeGrad)"/>
+
+  <!-- Circuit traces on F (orange) -->
+  <circle cx="245" cy="175" r="3.5" fill="#e8a040" opacity="0.9"/>
+  <circle cx="258" cy="175" r="3.5" fill="#e8a040" opacity="0.9"/>
+  <line x1="248" y1="175" x2="258" y2="175" stroke="#e8a040" stroke-width="2" opacity="0.7"/>
+  <circle cx="240" cy="210" r="3.5" fill="#e8a040" opacity="0.9"/>
+  <circle cx="252" cy="210" r="3.5" fill="#e8a040" opacity="0.9"/>
+  <line x1="240" y1="210" x2="252" y2="210" stroke="#e8a040" stroke-width="2" opacity="0.7"/>
+
+  <!-- ===== WORDMARK ===== -->
+  <!-- "CreditForge" text -->
+  <text x="200" y="310" font-family="'Segoe UI', 'Inter', 'Arial', sans-serif"
+        font-size="36" font-weight="700" fill="#1a2a5e" text-anchor="middle" letter-spacing="-0.5">
+    CreditForge
+  </text>
+  <!-- Tagline -->
+  <text x="200" y="335" font-family="'Segoe UI', 'Inter', 'Arial', sans-serif"
+        font-size="14" font-weight="400" fill="#6b7ea8" text-anchor="middle" letter-spacing="0.5">
+    Precision Intelligence for Credit Risk
+  </text>
+</svg>

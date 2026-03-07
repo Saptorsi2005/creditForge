@@ -146,7 +146,7 @@ export default function NewApplication() {
                     {/* Error Banner */}
                     {error && (
                         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
-                            <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                            <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
                             <p className="text-sm text-red-400">{error}</p>
                             <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-300">
                                 <X className="h-4 w-4" />
@@ -271,7 +271,7 @@ export default function NewApplication() {
                         <button
                             onClick={handleRunAnalysis}
                             disabled={isProcessing || isComplete}
-                            className="w-full mb-8 flex items-center justify-center space-x-2 rounded-xl bg-brand-blue hover:bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-blue/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                            className="w-full mb-8 flex items-center justify-center space-x-2 rounded-xl bg-brand-blue hover:bg-emerald-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-blue/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
                         >
                             {isProcessing ? (
                                 <>

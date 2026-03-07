@@ -7,12 +7,12 @@ export default function Settings() {
     const [saving, setSaving] = useState(false);
     const [resetting, setResetting] = useState(false);
     const [message, setMessage] = useState(null);
-    
+
     // Settings state
     const [autoApprovalScore, setAutoApprovalScore] = useState(75);
     const [baseLendingRate, setBaseLendingRate] = useState(8.5);
     const [maxRiskPremiumCap, setMaxRiskPremiumCap] = useState(3.0);
-    
+
     // Risk scoring weights (not shown in UI but required by backend)
     const [weights, setWeights] = useState({
         revenueWeight: 0.25,
@@ -21,7 +21,7 @@ export default function Settings() {
         promoterWeight: 0.15,
         sectorWeight: 0.20,
     });
-    
+
     const [sectorMultipliers, setSectorMultipliers] = useState({
         'Manufacturing': 1.2,
         'IT Services': 0.8,
@@ -40,12 +40,12 @@ export default function Settings() {
             setLoading(true);
             const response = await settingsAPI.get();
             const settings = response.data.settings;
-            
+
             if (settings) {
                 setAutoApprovalScore(settings.autoApprovalScore || 75);
                 setBaseLendingRate(settings.baseLendingRate || 8.5);
                 setMaxRiskPremiumCap(settings.maxRiskPremiumCap || 3.0);
-                
+
                 // Load risk scoring weights
                 setWeights({
                     revenueWeight: settings.revenueWeight || 0.25,
@@ -54,7 +54,7 @@ export default function Settings() {
                     promoterWeight: settings.promoterWeight || 0.15,
                     sectorWeight: settings.sectorWeight || 0.20,
                 });
-                
+
                 // Load sector multipliers
                 if (settings.sectorRiskConfig) {
                     const config = settings.sectorRiskConfig;
@@ -78,7 +78,7 @@ export default function Settings() {
     const handleSave = async () => {
         try {
             setSaving(true);
-            
+
             // Prepare sector risk config with all sectors
             const sectorRiskConfig = {
                 'Manufacturing': sectorMultipliers['Manufacturing'],
@@ -96,14 +96,14 @@ export default function Settings() {
                 'Aviation': 1.5,
                 'Hospitality': 1.3,
             };
-            
+
             await settingsAPI.update({
                 autoApprovalScore,
                 baseLendingRate,
                 maxRiskPremiumCap,
                 sectorRiskConfig,
             });
-            
+
             showMessage('Settings saved successfully!', 'success');
         } catch (error) {
             console.error('Failed to save settings:', error);
@@ -117,7 +117,7 @@ export default function Settings() {
         if (!window.confirm('Are you sure you want to reset all settings to default values?')) {
             return;
         }
-        
+
         try {
             setResetting(true);
             await settingsAPI.reset();
@@ -155,9 +155,8 @@ export default function Settings() {
         <div className="space-y-6 max-w-5xl mx-auto pb-10">
             {/* Success/Error Message */}
             {message && (
-                <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg ${
-                    message.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
-                }`}>
+                <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg ${message.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-emerald-500 text-white'
+                    }`}>
                     {message.type === 'success' ? (
                         <CheckCircle className="h-5 w-5" />
                     ) : (
@@ -166,7 +165,7 @@ export default function Settings() {
                     <span>{message.text}</span>
                 </div>
             )}
-            
+
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                     <div className="bg-slate-900 border border-slate-700 p-2.5 rounded-lg shadow-inner">
@@ -178,7 +177,7 @@ export default function Settings() {
                     </div>
                 </div>
                 <div className="flex space-x-3">
-                    <button 
+                    <button
                         onClick={handleReset}
                         disabled={resetting || saving}
                         className="px-4 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 hover:bg-slate-700 transition-colors text-sm font-medium flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -186,10 +185,10 @@ export default function Settings() {
                         <RefreshCw className={`h-4 w-4 ${resetting ? 'animate-spin' : ''}`} />
                         <span>{resetting ? 'Resetting...' : 'Reset Defaults'}</span>
                     </button>
-                    <button 
+                    <button
                         onClick={handleSave}
                         disabled={saving || resetting}
-                        className="px-4 py-2 bg-brand-blue text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium shadow-lg shadow-brand-blue/20 flex items-center space-x-2 relative group overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-brand-blue text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium shadow-lg shadow-brand-blue/20 flex items-center space-x-2 relative group overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
                         <Save className="h-4 w-4 relative z-10" />
@@ -323,9 +322,9 @@ export default function Settings() {
                                 <div key={sector} className="bg-slate-950 p-4 rounded-lg border border-slate-800/80 hover:border-slate-700 transition-colors">
                                     <div className="flex justify-between items-center mb-3">
                                         <span className="text-sm font-medium text-slate-200">{sector}</span>
-                                        <span className={`text-xs font-bold px-2 py-1 rounded ${weight > 1.2 ? 'bg-red-500/20 text-red-400' :
-                                                weight < 1.0 ? 'bg-emerald-500/20 text-emerald-400' :
-                                                    'bg-slate-800 text-slate-300'
+                                        <span className={`text-xs font-bold px-2 py-1 rounded ${weight > 1.3 ? 'bg-red-500/20 text-red-500' :
+                                            weight > 1.0 ? 'bg-amber-500/20 text-amber-500' :
+                                                'bg-emerald-500/20 text-emerald-400'
                                             }`}>
                                             {weight.toFixed(2)}x
                                         </span>

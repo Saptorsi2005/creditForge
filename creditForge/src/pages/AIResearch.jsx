@@ -45,7 +45,7 @@ function SentimentBadge({ label, score }) {
     const color = label === 'POSITIVE'
         ? 'bg-emerald-500/20 text-emerald-400'
         : label === 'NEGATIVE'
-            ? 'bg-red-500/20 text-red-400'
+            ? 'bg-red-500/20 text-red-500'
             : 'bg-slate-700 text-slate-300';
     return (
         <span className={`px-2 py-1 text-xs font-bold rounded ${color}`}>
@@ -115,7 +115,7 @@ export default function AIResearch() {
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center py-24 space-y-4">
-                <AlertCircle className="h-12 w-12 text-red-400" />
+                <AlertCircle className="h-12 w-12 text-emerald-400" />
                 <p className="text-slate-400 text-center max-w-md">{error}</p>
                 <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm">
                     <ArrowLeft className="h-4 w-4" /> Back to Dashboard
@@ -143,8 +143,8 @@ export default function AIResearch() {
 
                 {/* Risk summary badge */}
                 <div className={`px-4 py-2 border rounded-lg flex items-center space-x-2 ${totalRisk > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-emerald-500/10 border-emerald-500/30'}`}>
-                    <ShieldAlert className={`h-5 w-5 ${totalRisk > 0 ? 'text-red-400' : 'text-emerald-400'}`} />
-                    <span className={`text-sm border-r pr-3 mr-1 font-bold ${totalRisk > 0 ? 'text-red-400 border-red-500/30' : 'text-emerald-400 border-emerald-500/30'}`}>
+                    <ShieldAlert className={`h-5 w-5 ${totalRisk > 0 ? 'text-red-500' : 'text-emerald-400'}`} />
+                    <span className={`text-sm border-r pr-3 mr-1 font-bold ${totalRisk > 0 ? 'text-red-500 border-red-500/30' : 'text-emerald-400 border-emerald-500/30'}`}>
                         {totalRisk > 0 ? 'Risk Signals Found' : 'No Risk Found'}
                     </span>
                     <span className="text-sm font-medium text-slate-300">
@@ -163,12 +163,12 @@ export default function AIResearch() {
             {/* Red Flags */}
             {redFlags.length > 0 && (
                 <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-5 space-y-3">
-                    <h2 className="text-sm font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4" /> Critical Red Flags
                     </h2>
                     {redFlags.map((flag, i) => (
                         <div key={i} className="flex items-start gap-3">
-                            <AlertTriangle className={`h-4 w-4 mt-0.5 shrink-0 ${flag.severity === 'CRITICAL' ? 'text-red-400' : 'text-brand-yellow'}`} />
+                            <AlertTriangle className={`h-4 w-4 mt-0.5 shrink-0 ${flag.severity === 'CRITICAL' ? 'text-red-500' : 'text-brand-yellow'}`} />
                             <div>
                                 <p className="text-sm font-semibold text-white">{flag.flag}</p>
                                 <p className="text-xs text-slate-400 mt-0.5">{flag.description}</p>
@@ -203,11 +203,11 @@ export default function AIResearch() {
                                     const isNeg = ['fraud', 'default', 'loss', 'penalty', 'raid', 'ed ', 'nclt', 'lawsuit', 'bankrupt', 'scam', 'npa'].some(w => text.includes(w));
                                     const isPos = ['profit', 'growth', 'award', 'expansion', 'record', 'win', 'strong', 'upgrade'].some(w => text.includes(w));
                                     const border = isNeg ? 'border-red-500/30 bg-red-500/5' : isPos ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-700/50 bg-slate-800/30';
-                                    const dot = isNeg ? 'bg-red-400' : isPos ? 'bg-emerald-400' : 'bg-slate-500';
+                                    const dot = isNeg ? 'bg-red-500' : isPos ? 'bg-emerald-400' : 'bg-slate-500';
 
                                     // Tag-based relevance styling
                                     const tagLabel = article.tag === 'DIRECT' ? 'Direct Match' : article.tag === 'RELATED' ? 'Related' : article.tag === 'INDUSTRY' ? 'Industry Context' : null;
-                                    const tagColor = article.tag === 'DIRECT' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                                    const tagColor = article.tag === 'DIRECT' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
                                         article.tag === 'RELATED' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
                                             'bg-slate-700/50 text-slate-400 border-slate-600/50';
 
@@ -229,7 +229,7 @@ export default function AIResearch() {
                                                         </div>
                                                         {(article.url) && (
                                                             <a href={article.url} target="_blank" rel="noopener noreferrer"
-                                                                className="text-brand-blue hover:text-blue-400 shrink-0 mt-0.5">
+                                                                className="text-brand-blue hover:text-emerald-400 shrink-0 mt-0.5">
                                                                 <ExternalLink className="h-3.5 w-3.5" />
                                                             </a>
                                                         )}
@@ -322,7 +322,7 @@ export default function AIResearch() {
                                         </div>
                                         <div className="p-4 bg-slate-800/10">
                                             <div className="flex items-start gap-3">
-                                                <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                                                <AlertTriangle className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
                                                 <p className="text-sm text-slate-200">{stripHtml(item.details || item.description)}</p>
                                             </div>
                                         </div>
@@ -375,13 +375,13 @@ export default function AIResearch() {
                     {(research?.riskKeywords ?? []).length > 0 && (
                         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
                             <h2 className="text-sm font-bold text-white mb-4 uppercase tracking-wider flex items-center gap-2">
-                                <AlertTriangle className="h-4 w-4 text-red-400" />
+                                <AlertTriangle className="h-4 w-4 text-emerald-400" />
                                 Risk Keyword Signals
                             </h2>
                             <div className="flex flex-wrap gap-2">
                                 {research.riskKeywords.slice(0, 20).map((kw, i) => (
-                                    <span key={i} className={`text-xs px-2 py-1 rounded border font-medium ${kw.severity === 'CRITICAL' ? 'bg-red-900/30 text-red-400 border-red-500/30' :
-                                        kw.severity === 'HIGH' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                    <span key={i} className={`text-xs px-2 py-1 rounded border font-medium ${kw.severity === 'CRITICAL' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' :
+                                        kw.severity === 'HIGH' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                             kw.severity === 'MEDIUM' ? 'bg-brand-yellow/10 text-brand-yellow border-brand-yellow/20' :
                                                 'bg-slate-800 text-slate-400 border-slate-700'
                                         }`}>

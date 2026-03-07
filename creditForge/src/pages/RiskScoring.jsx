@@ -11,7 +11,7 @@ function Skeleton({ className = '' }) {
 function scoreColor(score) {
     if (score >= 80) return 'text-emerald-400';
     if (score >= 60) return 'text-brand-yellow';
-    return 'text-red-400';
+    return 'text-red-500';
 }
 function barColor(score) {
     if (score >= 80) return 'bg-emerald-500';
@@ -22,7 +22,7 @@ function ringColor(riskLevel) {
     if (!riskLevel) return 'text-slate-400';
     const l = riskLevel.toUpperCase();
     if (l === 'LOW') return 'text-emerald-400';
-    if (l === 'HIGH' || l === 'CRITICAL') return 'text-red-400';
+    if (l === 'HIGH' || l === 'VERY_HIGH' || l === 'CRITICAL') return 'text-red-500';
     return 'text-brand-yellow';
 }
 
@@ -103,7 +103,7 @@ export default function RiskScoring() {
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center py-24 space-y-4">
-                <AlertCircle className="h-12 w-12 text-red-400" />
+                <AlertCircle className="h-12 w-12 text-emerald-400" />
                 <p className="text-slate-400 text-center max-w-md">{error}</p>
                 <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm">
                     <ArrowLeft className="h-4 w-4" /> Back to Dashboard
@@ -142,7 +142,7 @@ export default function RiskScoring() {
                         <p className="text-sm text-slate-400 mt-1">Transparent breakdown of AI credit evaluations.</p>
                     </div>
                 </div>
-                <button onClick={() => navigate(`/applications/${id}/cam-report`)} className="px-4 py-2 bg-brand-blue hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium shadow-lg shadow-brand-blue/20">
+                <button onClick={() => navigate(`/applications/${id}/cam-report`)} className="px-4 py-2 bg-brand-blue hover:bg-emerald-600 text-white rounded-lg transition-colors text-sm font-medium shadow-lg shadow-brand-blue/20">
                     View CAM Report →
                 </button>
             </div>
@@ -167,7 +167,7 @@ export default function RiskScoring() {
                                     {riskLevel} Risk
                                 </p>
                                 <p className="text-xs text-slate-400 mt-1 font-medium">
-                                    Rec: <span className={`font-bold ${recommendation === 'APPROVE' ? 'text-emerald-400' : recommendation === 'REJECT' ? 'text-red-400' : 'text-brand-yellow'}`}>{recommendation}</span>
+                                    Rec: <span className={`font-bold ${recommendation === 'APPROVE' ? 'text-emerald-400' : recommendation === 'REJECT' ? 'text-red-500' : 'text-brand-yellow'}`}>{recommendation}</span>
                                 </p>
                             </div>
                             {/* SVG ring chart */}
@@ -233,8 +233,8 @@ export default function RiskScoring() {
                                                 <td className="px-6 py-4 font-medium text-slate-300">{w}</td>
                                                 <td className="px-6 py-4">
                                                     <span className={`inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold uppercase border ${impact === 'Positive' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                            impact === 'Negative' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                                'bg-brand-yellow/10 text-brand-yellow border-brand-yellow/20'
+                                                        impact === 'Negative' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                                            'bg-brand-yellow/10 text-brand-yellow border-brand-yellow/20'
                                                         }`}>
                                                         {impact}
                                                     </span>
@@ -269,7 +269,7 @@ export default function RiskScoring() {
                                         <PolarGrid stroke="#334155" />
                                         <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }} />
                                         <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                        <Radar name="Company Profile" dataKey="A" stroke="#3b82f6" strokeWidth={2} fill="#3b82f6" fillOpacity={0.3} />
+                                        <Radar name="Company Profile" dataKey="A" stroke="#10b981" strokeWidth={2} fill="#10b981" fillOpacity={0.3} />
                                     </RadarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -285,7 +285,7 @@ export default function RiskScoring() {
                             </h2>
                             <ul className="space-y-3">
                                 {deductions.map((d, i) => (
-                                    <li key={i} className={`text-sm text-slate-300 pl-4 leading-relaxed border-l-2 ${i % 2 === 0 ? 'border-brand-blue' : 'border-red-500'}`}>
+                                    <li key={i} className="text-sm text-slate-300 pl-4 leading-relaxed border-l-2 border-red-500/50">
                                         {typeof d === 'string' ? d : d.reason ?? JSON.stringify(d)}
                                     </li>
                                 ))}

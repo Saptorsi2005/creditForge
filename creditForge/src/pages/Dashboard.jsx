@@ -4,14 +4,14 @@ import {
     Tooltip as RechartsTooltip, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts';
-import { Users, CheckCircle2, XCircle, Clock, TrendingUp, RefreshCw } from 'lucide-react';
+import { Users, CheckCircle2, XCircle, Clock, RefreshCw, ArrowUpRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { dashboardAPI, applicationsAPI } from '../services/api';
 
 // ── Skeleton loader ───────────────────────────────────────────────────────────
 function Skeleton({ className = '' }) {
-    return <div className={`animate-pulse bg-slate-800 rounded ${className}`} />;
+    return <div className={`animate-pulse rounded-lg ${className}`} style={{ background: 'rgba(255,255,255,0.04)' }} />;
 }
 
 // ── Risk color helpers ────────────────────────────────────────────────────────
@@ -21,25 +21,45 @@ function normalizeRiskDistribution(raw = {}) {
     return [
         { name: 'Low Risk', value: raw.LOW ?? 0, color: RISK_COLORS.LOW },
         { name: 'Medium Risk', value: raw.MEDIUM ?? 0, color: RISK_COLORS.MEDIUM },
-        { name: 'High Risk', value: raw.HIGH ?? 0, color: RISK_COLORS.HIGH },
+        { name: 'High Risk', value: (raw.HIGH ?? 0) + (raw.VERY_HIGH ?? 0), color: RISK_COLORS.HIGH },
         { name: 'Critical Risk', value: raw.CRITICAL ?? 0, color: RISK_COLORS.CRITICAL },
     ].filter((d) => d.value > 0);
 }
 
-function statusBadgeClass(status = '') {
+function statusBadgeStyle(status = '') {
     const s = status.toUpperCase();
-    if (s === 'APPROVED') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-    if (s === 'REJECTED') return 'bg-red-500/10 text-red-500 border-red-500/20';
-    if (s === 'COMPLETED') return 'bg-brand-blue/10 text-brand-blue border-brand-blue/20';
-    if (s === 'FAILED') return 'bg-red-900/30 text-red-400 border-red-900/30';
-    return 'bg-brand-yellow/10 text-brand-yellow border-brand-yellow/20';
+    if (s === 'APPROVED') return { bg: 'rgba(16,185,129,0.1)', text: '#34d399', border: 'rgba(16,185,129,0.2)' };
+    if (s === 'REJECTED') return { bg: 'rgba(239,68,68,0.1)', text: '#ef4444', border: 'rgba(239,68,68,0.2)' };
+    if (s === 'COMPLETED') return { bg: 'rgba(16,185,129,0.1)', text: '#6ee7b7', border: 'rgba(16,185,129,0.2)' };
+    if (s === 'FAILED') return { bg: 'rgba(220,38,38,0.12)', text: '#ef4444', border: 'rgba(220,38,38,0.2)' };
+    return { bg: 'rgba(245,158,11,0.1)', text: '#fbbf24', border: 'rgba(245,158,11,0.2)' };
 }
 
 function formatCurrency(amount) {
     if (!amount) return '—';
-    const cr = amount / 10000000; // 1 Cr = 10M (assuming amount in INR)
+    const cr = amount / 10000000;
     return `₹ ${cr.toFixed(2)} Cr`;
 }
+
+// KPI card accent configs
+const CARD_ACCENTS = [
+    { glow: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.15)', iconBg: 'rgba(16,185,129,0.1)', iconColor: '#34d399' },
+    { glow: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.15)', iconBg: 'rgba(16,185,129,0.1)', iconColor: '#34d399' },
+    { glow: 'rgba(249,115,22,0.15)', border: 'rgba(249,115,22,0.15)', iconBg: 'rgba(249,115,22,0.1)', iconColor: '#fb923c' },
+    { glow: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.15)', iconBg: 'rgba(245,158,11,0.08)', iconColor: '#fbbf24' },
+];
+
+const tooltipStyle = {
+    contentStyle: {
+        backgroundColor: '#0b1120',
+        borderColor: 'rgba(255,255,255,0.07)',
+        borderRadius: '0.75rem',
+        color: '#f8fafc',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+        fontSize: '12px'
+    },
+    itemStyle: { color: '#cbd5e1' }
+};
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -72,52 +92,64 @@ export default function Dashboard() {
         }
     }, []);
 
-    useEffect(() => {
-        fetchAll();
-    }, [fetchAll, refreshKey]);
+    useEffect(() => { fetchAll(); }, [fetchAll, refreshKey]);
 
-    // ── KPI cards built from real /stats response ─────────────────────────────
     const kpiCards = stats
         ? [
-            { name: 'Total Applications', value: stats.totalApplications ?? 0, icon: Users, color: 'text-brand-blue' },
-            { name: 'Approved', value: stats.approved ?? 0, icon: CheckCircle2, color: 'text-emerald-400' },
-            { name: 'Rejected', value: stats.rejected ?? 0, icon: XCircle, color: 'text-red-400' },
-            { name: 'Under Review', value: stats.underReview ?? 0, icon: Clock, color: 'text-brand-yellow' },
+            { name: 'Total Applications', value: stats.totalApplications ?? 0, icon: Users, accentIdx: 0 },
+            { name: 'Approved', value: stats.approved ?? 0, icon: CheckCircle2, accentIdx: 1 },
+            { name: 'Rejected', value: stats.rejected ?? 0, icon: XCircle, accentIdx: 2 },
+            { name: 'Under Review', value: stats.underReview ?? 0, icon: Clock, accentIdx: 3 },
         ]
         : [];
 
-    // ── Risk distribution from /stats.riskDistribution ───────────────────────
     const riskData = normalizeRiskDistribution(stats?.riskDistribution);
-
-    // ── Sector data from /charts.applicationsBySector ────────────────────────
     const sectorData = (charts?.applicationsBySector ?? []).map((d) => ({
         name: d.sector || d.name || 'Unknown',
         value: d.count ?? d.value ?? 0,
     }));
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // Format current date nicely
+    const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    const cardStyle = {
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: '16px',
+    };
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-4">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard Overview</h1>
-                    <p className="text-sm text-slate-400 mt-1">Real-time credit analysis and portfolio health.</p>
+                    <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard Overview</h1>
+                    <p className="text-sm mt-1" style={{ color: '#475569' }}>{today}</p>
                 </div>
                 <div className="flex space-x-3">
                     <button
                         onClick={() => setRefreshKey((k) => k + 1)}
                         title="Refresh"
-                        className="px-3 py-2 bg-slate-800 text-slate-400 rounded-lg border border-slate-700 hover:bg-slate-700 transition-colors"
+                        className="h-9 w-9 flex items-center justify-center rounded-xl transition-all duration-150"
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
                     >
-                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={`h-4 w-4 text-slate-400 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                     {hasPermission('create') && (
                         <button
                             onClick={() => navigate('/new-application')}
-                            className="px-4 py-2 bg-brand-blue text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium shadow-lg shadow-brand-blue/20"
+                            className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-all duration-150 flex items-center space-x-2"
+                            style={{
+                                background: 'linear-gradient(135deg, #10b981, #047857)',
+                                boxShadow: '0 4px 16px rgba(16,185,129,0.35)'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 24px rgba(16,185,129,0.5)'}
+                            onMouseLeave={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(16,185,129,0.35)'}
                         >
-                            New Application
+                            <span>New Application</span>
+                            <ArrowUpRight className="h-3.5 w-3.5" />
                         </button>
                     )}
                 </div>
@@ -125,8 +157,10 @@ export default function Dashboard() {
 
             {/* Error Banner */}
             {error && (
-                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">
-                    {error}
+                <div className="px-4 py-3 rounded-xl text-sm flex items-center space-x-2"
+                    style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#34d399' }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                    <span>{error}</span>
                 </div>
             )}
 
@@ -134,75 +168,77 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {loading
                     ? Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                            <Skeleton className="h-4 w-32 mb-4" />
-                            <Skeleton className="h-9 w-20" />
+                        <div key={i} style={cardStyle} className="p-5">
+                            <Skeleton className="h-4 w-28 mb-4" />
+                            <Skeleton className="h-8 w-16" />
                         </div>
                     ))
-                    : kpiCards.map((card) => {
+                    : kpiCards.map((card, idx) => {
                         const Icon = card.icon;
+                        const accent = CARD_ACCENTS[card.accentIdx];
                         return (
-                            <div key={card.name} className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm relative overflow-hidden">
-                                <div className="absolute -right-4 -top-4 w-24 h-24 bg-brand-blue/5 rounded-full blur-2xl pointer-events-none" />
+                            <div key={card.name} className="p-5 relative overflow-hidden transition-all duration-200"
+                                style={{
+                                    ...cardStyle,
+                                    borderColor: accent.border,
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.boxShadow = `0 8px 32px ${accent.glow}`; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.boxShadow = 'none'; }}
+                            >
+                                {/* Glow orb */}
+                                <div className="absolute -right-6 -top-6 w-20 h-20 rounded-full blur-2xl pointer-events-none opacity-50"
+                                    style={{ background: accent.glow }} />
                                 <div className="flex items-center justify-between relative z-10">
-                                    <p className="text-sm font-medium text-slate-400">{card.name}</p>
-                                    <div className="p-2 bg-slate-800/80 border border-slate-700 rounded-lg">
-                                        <Icon className={`h-5 w-5 ${card.color}`} />
+                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#475569' }}>{card.name}</p>
+                                    <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                        style={{ background: accent.iconBg, border: `1px solid ${accent.border}` }}>
+                                        <Icon className="h-4 w-4" style={{ color: accent.iconColor }} />
                                     </div>
                                 </div>
-                                <div className="mt-4 flex items-baseline space-x-2 relative z-10">
-                                    <p className="text-3xl font-semibold text-white">
-                                        {card.value.toLocaleString()}
-                                    </p>
-                                </div>
+                                <p className="mt-4 text-3xl font-bold text-white relative z-10 tracking-tight">
+                                    {card.value.toLocaleString()}
+                                </p>
                             </div>
                         );
                     })}
             </div>
 
             {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* Donut — Risk Distribution */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-white mb-6">Risk Distribution</h2>
+                <div style={cardStyle} className="p-6">
+                    <div className="flex items-center justify-between mb-5">
+                        <h2 className="text-sm font-semibold text-white uppercase tracking-wider">Risk Distribution</h2>
+                        <span className="text-xs px-2 py-1 rounded-md" style={{ background: 'rgba(255,255,255,0.05)', color: '#64748b' }}>Portfolio</span>
+                    </div>
                     {loading ? (
                         <Skeleton className="h-72 w-full" />
                     ) : riskData.length === 0 ? (
-                        <div className="h-72 flex items-center justify-center text-slate-500 text-sm">
-                            No risk data yet
-                        </div>
+                        <div className="h-72 flex items-center justify-center text-slate-600 text-sm">No risk data yet</div>
                     ) : (
                         <>
-                            <div className="h-64">
+                            <div className="h-56">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
-                                            data={riskData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={80}
-                                            outerRadius={110}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                            stroke="none"
+                                            data={riskData} cx="50%" cy="50%"
+                                            innerRadius={70} outerRadius={100}
+                                            paddingAngle={4} dataKey="value" stroke="none"
                                         >
                                             {riskData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.color} />
                                             ))}
                                         </Pie>
-                                        <RechartsTooltip
-                                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '0.5rem', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.5)' }}
-                                            itemStyle={{ color: '#f8fafc' }}
-                                        />
+                                        <RechartsTooltip {...tooltipStyle} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
-                            <div className="flex justify-center flex-wrap gap-x-6 gap-y-2 mt-2">
+                            <div className="flex justify-center flex-wrap gap-x-5 gap-y-2 mt-3">
                                 {riskData.map(item => (
                                     <div key={item.name} className="flex items-center space-x-2">
-                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                                        <span className="text-xs text-slate-400 font-medium">
-                                            {item.name} ({item.value})
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                                        <span className="text-xs font-medium" style={{ color: '#94a3b8' }}>
+                                            {item.name} <span className="opacity-60">({item.value})</span>
                                         </span>
                                     </div>
                                 ))}
@@ -212,26 +248,31 @@ export default function Dashboard() {
                 </div>
 
                 {/* Bar — Applications by Sector */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-white mb-6">Applications by Sector</h2>
+                <div style={cardStyle} className="p-6">
+                    <div className="flex items-center justify-between mb-5">
+                        <h2 className="text-sm font-semibold text-white uppercase tracking-wider">Applications by Sector</h2>
+                        <span className="text-xs px-2 py-1 rounded-md" style={{ background: 'rgba(255,255,255,0.05)', color: '#64748b' }}>Distribution</span>
+                    </div>
                     {loading ? (
                         <Skeleton className="h-72 w-full" />
                     ) : sectorData.length === 0 ? (
-                        <div className="h-72 flex items-center justify-center text-slate-500 text-sm">
-                            No sector data yet
-                        </div>
+                        <div className="h-72 flex items-center justify-center text-slate-600 text-sm">No sector data yet</div>
                     ) : (
-                        <div className="h-72">
+                        <div className="h-64">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={sectorData} layout="vertical" margin={{ top: 0, right: 0, left: 30, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={true} vertical={false} />
-                                    <XAxis type="number" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis dataKey="name" type="category" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                                    <RechartsTooltip
-                                        cursor={{ fill: '#1e293b' }}
-                                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '0.5rem', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.5)' }}
-                                    />
-                                    <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={24} />
+                                <BarChart data={sectorData} layout="vertical" margin={{ top: 0, right: 8, left: 32, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={true} vertical={false} />
+                                    <XAxis type="number" stroke="#334155" fontSize={11} tickLine={false} axisLine={false} />
+                                    <YAxis dataKey="name" type="category" stroke="#334155" fontSize={11} tickLine={false} axisLine={false} />
+                                    <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} {...tooltipStyle} />
+                                    <Bar dataKey="value" fill="url(#barGrad)" radius={[0, 6, 6, 0]} barSize={20}>
+                                    </Bar>
+                                    <defs>
+                                        <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="0%" stopColor="#047857" />
+                                            <stop offset="100%" stopColor="#10b981" />
+                                        </linearGradient>
+                                    </defs>
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -240,34 +281,39 @@ export default function Dashboard() {
             </div>
 
             {/* Recent Applications Table */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-sm overflow-hidden">
-                <div className="px-6 py-5 border-b border-slate-800 flex justify-between items-center">
-                    <h2 className="text-lg font-semibold text-white">Recent Loan Applications</h2>
+            <div style={cardStyle} className="overflow-hidden">
+                <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div>
+                        <h2 className="text-sm font-semibold text-white uppercase tracking-wider">Recent Applications</h2>
+                        <p className="text-xs mt-0.5" style={{ color: '#475569' }}>Latest 5 loan applications</p>
+                    </div>
                     {hasPermission('create') && (
                         <button
                             onClick={() => navigate('/new-application')}
-                            className="text-sm text-brand-blue hover:text-blue-400 font-medium transition-colors"
+                            className="text-xs font-semibold transition-colors flex items-center space-x-1"
+                            style={{ color: '#10b981' }}
+                            onMouseEnter={e => e.target.style.color = '#6ee7b7'}
+                            onMouseLeave={e => e.target.style.color = '#10b981'}
                         >
-                            + New
+                            <span>+ New</span>
                         </button>
                     )}
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-slate-400">
-                        <thead className="text-xs text-slate-500 bg-slate-900/50 uppercase border-b border-slate-800">
-                            <tr>
-                                <th className="px-6 py-4 font-medium tracking-wider">Application ID</th>
-                                <th className="px-6 py-4 font-medium tracking-wider">Entity Name</th>
-                                <th className="px-6 py-4 font-medium tracking-wider">Sector</th>
-                                <th className="px-6 py-4 font-medium tracking-wider">Requested Amount</th>
-                                <th className="px-6 py-4 font-medium tracking-wider">AI Risk Score</th>
-                                <th className="px-6 py-4 font-medium tracking-wider">Status</th>
+                    <table className="w-full text-left text-sm">
+                        <thead>
+                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                {['Application ID', 'Entity Name', 'Sector', 'Requested Amount', 'AI Risk Score', 'Status'].map(col => (
+                                    <th key={col} className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#334155' }}>
+                                        {col}
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/80">
+                        <tbody>
                             {loading
                                 ? Array.from({ length: 4 }).map((_, i) => (
-                                    <tr key={i}>
+                                    <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                                         {Array.from({ length: 6 }).map((_, j) => (
                                             <td key={j} className="px-6 py-4">
                                                 <Skeleton className="h-4 w-full" />
@@ -278,13 +324,11 @@ export default function Dashboard() {
                                 : applications.length === 0
                                     ? (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                                            <td colSpan={6} className="px-6 py-12 text-center text-sm" style={{ color: '#334155' }}>
                                                 No applications yet.{' '}
                                                 {hasPermission('create') && (
-                                                    <button
-                                                        onClick={() => navigate('/new-application')}
-                                                        className="text-brand-blue hover:underline"
-                                                    >
+                                                    <button onClick={() => navigate('/new-application')}
+                                                        className="font-semibold transition-colors" style={{ color: '#10b981' }}>
                                                         Create one.
                                                     </button>
                                                 )}
@@ -293,39 +337,54 @@ export default function Dashboard() {
                                     )
                                     : applications.map((app) => {
                                         const score = app.aiScore ?? app.riskScore?.compositeScore ?? null;
+                                        const badge = statusBadgeStyle(app.status);
                                         return (
                                             <tr
                                                 key={app.id}
-                                                className="hover:bg-slate-800/40 transition-colors group cursor-pointer"
+                                                className="transition-all duration-150 cursor-pointer group"
+                                                style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}
                                                 onClick={() => navigate(`/applications/${app.id}/company-analysis`)}
+                                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderLeft = '3px solid rgba(16,185,129,0.4)'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.borderLeft = ''; }}
                                             >
-                                                <td className="px-6 py-4 font-medium text-brand-blue group-hover:text-blue-400 transition-colors">
+                                                <td className="px-6 py-4 font-mono text-xs font-semibold" style={{ color: '#6ee7b7' }}>
                                                     {app.applicationNo}
                                                 </td>
-                                                <td className="px-6 py-4 text-slate-200 font-medium">{app.companyName}</td>
-                                                <td className="px-6 py-4">{app.sector}</td>
-                                                <td className="px-6 py-4 font-medium text-slate-300">
+                                                <td className="px-6 py-4 font-semibold text-slate-200 text-sm">{app.companyName}</td>
+                                                <td className="px-6 py-4 text-xs" style={{ color: '#64748b' }}>{app.sector}</td>
+                                                <td className="px-6 py-4 font-semibold text-sm" style={{ color: '#94a3b8' }}>
                                                     {formatCurrency(app.loanAmount)}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     {score !== null ? (
-                                                        <div className="flex items-center space-x-3">
-                                                            <div className="w-full bg-slate-800 rounded-full h-1.5 max-w-[80px] overflow-hidden">
+                                                        <div className="flex items-center space-x-2.5">
+                                                            <div className="w-16 rounded-full h-1"
+                                                                style={{ background: 'rgba(255,255,255,0.06)' }}>
                                                                 <div
-                                                                    className={`h-full rounded-full ${score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-brand-yellow' : 'bg-red-500'}`}
-                                                                    style={{ width: `${Math.min(score, 100)}%` }}
+                                                                    className="h-full rounded-full"
+                                                                    style={{
+                                                                        width: `${Math.min(score, 100)}%`,
+                                                                        background: score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444'
+                                                                    }}
                                                                 />
                                                             </div>
-                                                            <span className="font-medium text-slate-300 w-8 text-right">
+                                                            <span className="text-xs font-bold" style={{
+                                                                color: score >= 80 ? '#34d399' : score >= 60 ? '#fbbf24' : '#ef4444'
+                                                            }}>
                                                                 {Math.round(score)}
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-slate-600 text-xs">Not scored</span>
+                                                        <span className="text-xs" style={{ color: '#334155' }}>Not scored</span>
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-semibold border ${statusBadgeClass(app.status)}`}>
+                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold"
+                                                        style={{
+                                                            background: badge.bg,
+                                                            color: badge.text,
+                                                            border: `1px solid ${badge.border}`
+                                                        }}>
                                                         {app.status?.replace(/_/g, ' ')}
                                                     </span>
                                                 </td>

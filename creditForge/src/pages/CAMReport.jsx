@@ -84,7 +84,7 @@ export default function CAMReport() {
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center py-24 space-y-4">
-                <AlertCircle className="h-12 w-12 text-red-400" />
+                <AlertCircle className="h-12 w-12 text-emerald-400" />
                 <p className="text-slate-400 text-center max-w-md">{error}</p>
                 <button onClick={() => navigate(`/applications/${id}/risk-scoring`)} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm">
                     <ArrowLeft className="h-4 w-4" /> Risk Score
@@ -108,9 +108,9 @@ export default function CAMReport() {
     const financials = cam?.financialSummary ?? cam?.keyFinancials ?? {};
     const generatedAt = cam?.generatedAt ? new Date(cam.generatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('en-IN');
 
-    const recBgColor = recommendation === 'APPROVE' ? 'bg-emerald-600' : recommendation === 'REJECT' ? 'bg-red-600' : 'bg-brand-yellow';
+    const recBgColor = recommendation === 'APPROVE' ? 'bg-emerald-600' : recommendation === 'REJECT' ? 'bg-emerald-600' : 'bg-brand-yellow';
 
-    const scoreColor = aiScore >= 80 ? 'text-emerald-700' : aiScore >= 60 ? 'text-amber-700' : 'text-red-700';
+    const scoreColor = aiScore >= 80 ? 'text-emerald-700' : aiScore >= 60 ? 'text-amber-700' : 'text-emerald-700';
 
     // Build financial table rows
     const finRows = [
@@ -147,7 +147,7 @@ export default function CAMReport() {
                     <button
                         onClick={handleDownloadPDF}
                         disabled={downloading}
-                        className="px-4 py-2 bg-brand-blue text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium shadow-lg shadow-brand-blue/20 flex items-center space-x-2 disabled:opacity-60"
+                        className="px-4 py-2 bg-brand-blue text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium shadow-lg shadow-brand-blue/20 flex items-center space-x-2 disabled:opacity-60"
                     >
                         {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         <span>{downloading ? 'Generating…' : 'Download CAM as PDF'}</span>
@@ -262,13 +262,13 @@ export default function CAMReport() {
                             )}
                             {weaknesses.length > 0 && (
                                 <section>
-                                    <h4 className="text-lg font-black uppercase border-b-2 border-red-800 text-red-900 pb-2 mb-4 flex items-center gap-2">
-                                        <AlertTriangle className="h-5 w-5 text-red-600" /> Key Risks
+                                    <h4 className="text-lg font-black uppercase border-b-2 border-emerald-800 text-emerald-900 pb-2 mb-4 flex items-center gap-2">
+                                        <AlertTriangle className="h-5 w-5 text-emerald-600" /> Key Risks
                                     </h4>
                                     <ul className="space-y-3 text-sm text-slate-800">
                                         {weaknesses.map((w, i) => (
                                             <li key={i} className="flex gap-2">
-                                                <span className="text-red-600 font-bold shrink-0">−</span>
+                                                <span className="text-emerald-600 font-bold shrink-0">−</span>
                                                 {typeof w === 'string' ? w : w.text ?? JSON.stringify(w)}
                                             </li>
                                         ))}
