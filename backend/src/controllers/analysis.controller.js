@@ -246,6 +246,7 @@ const getCAMPDF = async (req, res, next) => {
     if (!camReport.pdfGenerated || !pdfPath) {
       const application = await prisma.application.findUnique({
         where: { id },
+        include: { riskScore: true },
       });
 
       const uploadsDir = path.join(__dirname, '../../uploads');

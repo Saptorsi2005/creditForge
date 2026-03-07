@@ -371,6 +371,46 @@ class CAMService {
   }
 
   /**
+   * Generate Five Cs of Credit Summary
+   */
+  generateFiveCsSummary(riskScore) {
+    const parts = [];
+    parts.push(`FIVE Cs OF CREDIT SUMMARY\n`);
+
+    // Character
+    parts.push(`1. Character (Willingness to Repay)`);
+    parts.push(`Score: ${riskScore.character}/100`);
+    parts.push(riskScore.character >= 75 ? `Observation: Strong management character with good track record.` : `Observation: Concerning indicators identified in management background or litigation history.`);
+    parts.push('');
+
+    // Capacity
+    parts.push(`2. Capacity (Ability to Repay)`);
+    parts.push(`Score: ${riskScore.capacity}/100`);
+    parts.push(riskScore.capacity >= 70 ? `Observation: Adequate cash flow and EBITDA margins to service debt.` : `Observation: Limited capacity to absorb additional financial obligations.`);
+    parts.push('');
+
+    // Capital
+    parts.push(`3. Capital (Financial Strength)`);
+    parts.push(`Score: ${riskScore.capital}/100`);
+    parts.push(riskScore.capital >= 65 ? `Observation: Healthy net worth and acceptable leverage ratio.` : `Observation: High leverage or weak net worth capitalization.`);
+    parts.push('');
+
+    // Collateral
+    parts.push(`4. Collateral (Assets Backing Loan)`);
+    parts.push(`Score: ${riskScore.collateral}/100`);
+    parts.push(riskScore.collateral >= 65 ? `Observation: Substantial asset base available to secure the facility.` : `Observation: Lower asset backing requires stronger operational cash flows.`);
+    parts.push('');
+
+    // Conditions
+    parts.push(`5. Conditions (Economic & Industry)`);
+    parts.push(`Score: ${riskScore.conditions}/100`);
+    parts.push(riskScore.conditions >= 70 ? `Observation: Favorable economic and sector conditions.` : `Observation: Sector-specific headwinds or cyclical downturn risks.`);
+    parts.push('');
+
+    return parts.join('\n');
+  }
+
+  /**
    * Generate Primary Risk Insights from Field Observations section
    * Returns null (not an empty string) when there are no notes — consumers check for null.
    */
@@ -600,6 +640,13 @@ class CAMService {
         this.addSection(doc, camReport.risksAnalysis);
 
         doc.addPage();
+
+        // Five Cs of Credit
+        if (application && application.riskScore) {
+          const fiveCsText = this.generateFiveCsSummary(application.riskScore);
+          this.addSection(doc, fiveCsText);
+          doc.addPage();
+        }
 
         // Mitigation
         if (camReport.mitigationStrategy) {
