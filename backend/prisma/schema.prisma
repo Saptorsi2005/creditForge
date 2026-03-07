@@ -2,7 +2,8 @@
 // Learn more: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -189,6 +190,7 @@ model AIResearch {
   
   // Risk Keywords Found
   riskKeywords          Json?       // Array of keyword objects with counts
+  riskScore             Float?      @default(0)
   
   // Sources
   sources               Json?       // Array of source URLs/references
@@ -196,6 +198,7 @@ model AIResearch {
   // Summary
   executiveSummary      String?
   redFlags              Json?       // Array of critical red flags
+  serviceNote           String?
   
   applicationId         String      @unique
   application           Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)

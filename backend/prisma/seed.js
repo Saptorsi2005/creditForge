@@ -221,6 +221,8 @@ async function main() {
           executiveSummary:
             'Research conducted reveals 1 ongoing civil litigation case. Overall sentiment is positive with no major regulatory or director concerns.',
           redFlags: [],
+          riskScore: 4,
+          serviceNote: null,
         },
       });
 

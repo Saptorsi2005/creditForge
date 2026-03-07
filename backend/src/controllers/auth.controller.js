@@ -57,13 +57,14 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
+    console.log(`[Auth] Login attempt for: ${email}`);
     // Find user
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
+      console.log(`[Auth] User not found: ${email}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -74,8 +75,10 @@ const login = async (req, res, next) => {
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
+    console.log(`[Auth] Password valid: ${isValidPassword}`);
 
     if (!isValidPassword) {
+      console.log(`[Auth] Invalid password for: ${email}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 

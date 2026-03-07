@@ -33,6 +33,7 @@ export default function NewApplication() {
         loanPurpose: '',
         sector: '',
     });
+    const [customSector, setCustomSector] = useState('');
     const [files, setFiles] = useState({}); // { [type]: File }
     const fileRefs = useRef({});
 
@@ -62,6 +63,11 @@ export default function NewApplication() {
             return;
         }
 
+        if (form.sector === 'Other' && !customSector.trim()) {
+            setError('Please specify the sector.');
+            return;
+        }
+
         const requiredTypes = DOCUMENT_TYPES.filter((d) => d.req).map((d) => d.type);
         const missingDocs = requiredTypes.filter((t) => !files[t]);
         if (missingDocs.length > 0) {
@@ -85,7 +91,7 @@ export default function NewApplication() {
                 cin: form.cin || undefined,
                 loanAmount: loanAmountInRupees,
                 loanPurpose: form.loanPurpose,
-                sector: form.sector,
+                sector: form.sector === 'Other' ? customSector.trim() : form.sector,
             });
             const appId = createRes.data.application.id;
             setCreatedAppId(appId);
@@ -119,7 +125,7 @@ export default function NewApplication() {
 
     const SECTORS = [
         'Technology', 'Healthcare', 'FMCG', 'Manufacturing', 'Services',
-        'Retail', 'Real Estate', 'Construction', 'Textiles', 'Metals', 'Aviation', 'Hospitality',
+        'Retail', 'Real Estate', 'Construction', 'Textiles', 'Metals', 'Aviation', 'Hospitality', 'Other'
     ];
 
     return (
@@ -187,6 +193,21 @@ export default function NewApplication() {
                                     <option value="">Select sector…</option>
                                     {SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
                                 </select>
+
+                                {/* Custom Sector Input - Moved here to be directly under the dropdown */}
+                                {form.sector === 'Other' && (
+                                    <div className="mt-4 animate-in fade-in slide-in-from-left-2 duration-300">
+                                        <label className="block text-sm font-medium text-slate-400 mb-1">Specify Sector *</label>
+                                        <input
+                                            type="text"
+                                            value={customSector}
+                                            onChange={(e) => setCustomSector(e.target.value)}
+                                            placeholder="e.g. Space Exploration"
+                                            disabled={isProcessing}
+                                            className="block w-full rounded-lg border-0 bg-slate-950/80 py-2.5 px-4 text-white shadow-inner ring-1 ring-inset ring-slate-800 placeholder:text-slate-600 focus:ring-2 focus:ring-inset focus:ring-brand-blue sm:text-sm transition-all disabled:opacity-50"
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

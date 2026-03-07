@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config(); // Updated to use local DB proxy
 const express = require('express');
 const cors = require('cors');
 const path = require('path');

@@ -76,6 +76,21 @@ class CAMService {
   }
 
   /**
+   * Helper to format numbers with commas and fixed decimals
+   */
+  formatCurrency(value, decimals = 2) {
+    if (value === null || value === undefined) return '0.00';
+    try {
+      return Number(value).toLocaleString('en-IN', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    } catch (e) {
+      return Number(value).toFixed(decimals);
+    }
+  }
+
+  /**
    * Generate Executive Summary
    */
   generateExecutiveSummary(application, companyAnalysis, riskScore) {
@@ -84,7 +99,7 @@ class CAMService {
     parts.push(`EXECUTIVE SUMMARY\n`);
     parts.push(`Application No: ${application.applicationNo}`);
     parts.push(`Company Name: ${application.companyName}`);
-    parts.push(`Loan Amount Requested: ₹${(application.loanAmount / 10000000).toFixed(2)} Cr`);
+    parts.push(`Loan Amount Requested: ₹ ${this.formatCurrency(application.loanAmount / 10000000)} Cr`);
     parts.push(`Purpose: ${application.loanPurpose}`);
     parts.push(`Sector: ${application.sector}\n`);
 
@@ -95,7 +110,7 @@ class CAMService {
 
     if (companyAnalysis?.revenue) {
       parts.push(`Financial Snapshot:`);
-      parts.push(`- Annual Revenue: ₹${(companyAnalysis.revenue / 10000000).toFixed(2)} Cr`);
+      parts.push(`- Annual Revenue: ₹ ${this.formatCurrency(companyAnalysis.revenue / 10000000)} Cr`);
       if (companyAnalysis.ebitdaMargin) {
         parts.push(`- EBITDA Margin: ${companyAnalysis.ebitdaMargin}%`);
       }
@@ -149,19 +164,19 @@ class CAMService {
     if (companyAnalysis) {
       parts.push(`Income Statement Metrics:`);
       if (companyAnalysis.revenue) {
-        parts.push(`- Total Revenue: ₹${(companyAnalysis.revenue / 10000000).toFixed(2)} Cr`);
+        parts.push(`- Total Revenue: ₹ ${this.formatCurrency(companyAnalysis.revenue / 10000000)} Cr`);
       }
       if (companyAnalysis.revenueGrowth) {
         parts.push(`- Revenue Growth: ${companyAnalysis.revenueGrowth > 0 ? '+' : ''}${companyAnalysis.revenueGrowth}%`);
       }
       if (companyAnalysis.ebitda) {
-        parts.push(`- EBITDA: ₹${(companyAnalysis.ebitda / 10000000).toFixed(2)} Cr`);
+        parts.push(`- EBITDA: ₹ ${this.formatCurrency(companyAnalysis.ebitda / 10000000)} Cr`);
       }
       if (companyAnalysis.ebitdaMargin) {
         parts.push(`- EBITDA Margin: ${companyAnalysis.ebitdaMargin}%`);
       }
       if (companyAnalysis.netProfit) {
-        parts.push(`- Net Profit: ₹${(companyAnalysis.netProfit / 10000000).toFixed(2)} Cr`);
+        parts.push(`- Net Profit: ₹ ${this.formatCurrency(companyAnalysis.netProfit / 10000000)} Cr`);
       }
       if (companyAnalysis.netProfitMargin) {
         parts.push(`- Net Profit Margin: ${companyAnalysis.netProfitMargin}%\n`);
@@ -169,16 +184,16 @@ class CAMService {
 
       parts.push(`Balance Sheet Metrics:`);
       if (companyAnalysis.totalAssets) {
-        parts.push(`- Total Assets: ₹${(companyAnalysis.totalAssets / 10000000).toFixed(2)} Cr`);
+        parts.push(`- Total Assets: ₹ ${this.formatCurrency(companyAnalysis.totalAssets / 10000000)} Cr`);
       }
       if (companyAnalysis.totalLiabilities) {
-        parts.push(`- Total Liabilities: ₹${(companyAnalysis.totalLiabilities / 10000000).toFixed(2)} Cr`);
+        parts.push(`- Total Liabilities: ₹ ${this.formatCurrency(companyAnalysis.totalLiabilities / 10000000)} Cr`);
       }
       if (companyAnalysis.netWorth) {
-        parts.push(`- Net Worth: ₹${(companyAnalysis.netWorth / 10000000).toFixed(2)} Cr`);
+        parts.push(`- Net Worth: ₹ ${this.formatCurrency(companyAnalysis.netWorth / 10000000)} Cr`);
       }
       if (companyAnalysis.totalDebt) {
-        parts.push(`- Total Debt: ₹${(companyAnalysis.totalDebt / 10000000).toFixed(2)} Cr\n`);
+        parts.push(`- Total Debt: ₹ ${this.formatCurrency(companyAnalysis.totalDebt / 10000000)} Cr\n`);
       }
 
       parts.push(`Key Financial Ratios:`);
@@ -198,8 +213,8 @@ class CAMService {
       // GST-Bank Reconciliation
       if (companyAnalysis.gstRevenue && companyAnalysis.bankRevenue) {
         parts.push(`\nGST-Bank Reconciliation:`);
-        parts.push(`- GST Reported Revenue: ₹${(companyAnalysis.gstRevenue / 10000000).toFixed(2)} Cr`);
-        parts.push(`- Bank Statement Revenue: ₹${(companyAnalysis.bankRevenue / 10000000).toFixed(2)} Cr`);
+        parts.push(`- GST Reported Revenue: ₹ ${this.formatCurrency(companyAnalysis.gstRevenue / 10000000)} Cr`);
+        parts.push(`- Bank Statement Revenue: ₹ ${this.formatCurrency(companyAnalysis.bankRevenue / 10000000)} Cr`);
         if (companyAnalysis.revenueMismatch) {
           parts.push(`- Variance: ${companyAnalysis.revenueMismatch.toFixed(2)}%`);
           if (companyAnalysis.mismatchFlag) {
@@ -259,8 +274,8 @@ class CAMService {
 
     // Add custom strengths from analysis
     if (companyAnalysis?.strengths) {
-      const customStrengths = Array.isArray(companyAnalysis.strengths) 
-        ? companyAnalysis.strengths 
+      const customStrengths = Array.isArray(companyAnalysis.strengths)
+        ? companyAnalysis.strengths
         : JSON.parse(companyAnalysis.strengths);
       strengths.push(...customStrengths);
     }
@@ -386,11 +401,11 @@ class CAMService {
     const decision = riskScore.recommendation;
     let amount = application.loanAmount;
     let tenure = 60; // Default 5 years
-    
+
     // Calculate interest rate using settings if available
     const baseLendingRate = settings?.baseLendingRate || 8.5;
     const maxRiskPremiumCap = settings?.maxRiskPremiumCap || 3.0;
-    
+
     // Formula: Final ROI = Base Rate + (Risk Premium × (100 - AI Score)/100)
     const riskFactor = (100 - riskScore.compositeScore) / 100;
     let rate = baseLendingRate + (maxRiskPremiumCap * riskFactor);
@@ -417,7 +432,7 @@ class CAMService {
       rate = 0;
       tenure = 0;
     }
-    
+
     // Round rate to 2 decimal places
     rate = parseFloat(rate.toFixed(2));
 
@@ -503,12 +518,21 @@ class CAMService {
 
         doc.pipe(stream);
 
+        // Load Unicode font for Rupee symbol support - Using Arial from Windows
+        const fontPath = 'C:\\Windows\\Fonts\\arial.ttf';
+        const boldFontPath = 'C:\\Windows\\Fonts\\arialbd.ttf';
+
+        doc.registerFont('CustomFont', fontPath);
+        doc.registerFont('CustomFont-Bold', boldFontPath);
+
+        doc.font('CustomFont');
+
         // Header
-        doc.fontSize(24).font('Helvetica-Bold').text('CREDIT ASSESSMENT MEMORANDUM', {
+        doc.fontSize(24).font('CustomFont-Bold').text('CREDIT ASSESSMENT MEMORANDUM', {
           align: 'center',
         });
 
-        doc.fontSize(10).font('Helvetica').text(`Generated: ${new Date().toLocaleDateString()}`, {
+        doc.fontSize(10).font('CustomFont').text(`Generated: ${new Date().toLocaleDateString()}`, {
           align: 'center',
         });
 
@@ -546,16 +570,16 @@ class CAMService {
         }
 
         // Final Recommendation
-        doc.fontSize(16).font('Helvetica-Bold').text('FINAL RECOMMENDATION', {
+        doc.fontSize(16).font('CustomFont-Bold').text('FINAL RECOMMENDATION', {
           underline: true,
         });
 
         doc.moveDown();
-        doc.fontSize(12).font('Helvetica-Bold').text(`Decision: ${camReport.recommendation}`);
+        doc.fontSize(12).font('CustomFont-Bold').text(`Decision: ${camReport.recommendation}`);
 
         if (camReport.recommendedAmount) {
-          doc.fontSize(11).font('Helvetica')
-            .text(`Recommended Loan Amount: ₹${(camReport.recommendedAmount / 10000000).toFixed(2)} Cr`);
+          doc.fontSize(11).font('CustomFont')
+            .text(`Recommended Loan Amount: ₹ ${this.formatCurrency(camReport.recommendedAmount / 10000000)} Cr`);
         }
 
         if (camReport.recommendedTenure) {
@@ -569,8 +593,8 @@ class CAMService {
         // Conditions
         if (camReport.conditions && camReport.conditions.length > 0) {
           doc.moveDown();
-          doc.fontSize(12).font('Helvetica-Bold').text('Conditions:');
-          doc.fontSize(10).font('Helvetica');
+          doc.fontSize(12).font('CustomFont-Bold').text('Conditions:');
+          doc.fontSize(10).font('CustomFont');
           camReport.conditions.forEach((condition, i) => {
             doc.text(`${i + 1}. ${condition}`);
           });
@@ -579,8 +603,8 @@ class CAMService {
         // Covenants
         if (camReport.financialCovenants && camReport.financialCovenants.length > 0) {
           doc.moveDown();
-          doc.fontSize(12).font('Helvetica-Bold').text('Financial Covenants:');
-          doc.fontSize(10).font('Helvetica');
+          doc.fontSize(12).font('CustomFont-Bold').text('Financial Covenants:');
+          doc.fontSize(10).font('CustomFont');
           camReport.financialCovenants.forEach((covenant, i) => {
             doc.text(`${i + 1}. ${covenant}`);
           });
@@ -588,8 +612,8 @@ class CAMService {
 
         if (camReport.nonFinancialCovenants && camReport.nonFinancialCovenants.length > 0) {
           doc.moveDown();
-          doc.fontSize(12).font('Helvetica-Bold').text('Non-Financial Covenants:');
-          doc.fontSize(10).font('Helvetica');
+          doc.fontSize(12).font('CustomFont-Bold').text('Non-Financial Covenants:');
+          doc.fontSize(10).font('CustomFont');
           camReport.nonFinancialCovenants.forEach((covenant, i) => {
             doc.text(`${i + 1}. ${covenant}`);
           });
@@ -597,7 +621,7 @@ class CAMService {
 
         // Footer
         doc.moveDown(2);
-        doc.fontSize(8).font('Helvetica').text(
+        doc.fontSize(8).font('CustomFont').text(
           '--- End of Credit Assessment Memorandum ---',
           { align: 'center' }
         );
@@ -621,7 +645,7 @@ class CAMService {
    * Add section to PDF
    */
   addSection(doc, content) {
-    doc.fontSize(10).font('Helvetica').text(content, {
+    doc.fontSize(10).font('CustomFont').text(content, {
       align: 'left',
       lineGap: 2,
     });

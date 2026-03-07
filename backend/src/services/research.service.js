@@ -1,6 +1,5 @@
-'use strict';
-
 const axios = require('axios');
+const https = require('https');
 
 /**
  * Research Service — Multi-Source Intelligence Layer
@@ -124,8 +123,18 @@ class ResearchService {
       const cleanDesc = desc.replace(/<[^>]+>/g, '').trim().substring(0, 500);
       const combined = (cleanTitle + ' ' + cleanDesc).toLowerCase();
 
-      if (!keyword || combined.includes(keyword.toLowerCase().split(' ')[0])) {
-        if (cleanTitle) {
+      if (!keyword) {
+        articles.push({
+          title: cleanTitle,
+          description: cleanDesc,
+          content: cleanDesc,
+          source: sourceName,
+          url: link.trim(),
+          publishedAt: pubDate.trim(),
+        });
+      } else {
+        const firstWord = keyword.split(' ')[0].toLowerCase();
+        if (combined.includes(firstWord)) {
           articles.push({
             title: cleanTitle,
             description: cleanDesc,
@@ -138,6 +147,39 @@ class ResearchService {
       }
     }
     return articles;
+  }
+
+  /**
+   * Helper to fetch content using native https to avoid axios-specific 503s
+   */
+  async _fetchWithHttps(url, userAgent) {
+    return new Promise((resolve, reject) => {
+      const options = {
+        headers: {
+          'User-Agent': userAgent,
+          'Accept': 'application/rss+xml, application/xml, text/xml',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+        timeout: 15000,
+      };
+
+      https.get(url, options, (res) => {
+        if (res.statusCode === 503) {
+          return reject(new Error('Request failed with status code 503'));
+        }
+        if (res.statusCode !== 200) {
+          return reject(new Error(`Request failed with status code ${res.statusCode}`));
+        }
+
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => { resolve(data); });
+      }).on('error', (err) => {
+        reject(err);
+      });
+    });
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
@@ -153,14 +195,10 @@ class ResearchService {
     try {
       const encoded = encodeURIComponent(`${query} India`);
       const url = `https://news.google.com/rss/search?q=${encoded}&hl=en-IN&gl=IN&ceid=IN:en`;
-      const response = await axios.get(url, {
-        timeout: 10000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; CreditForge/2.0; +https://creditforge.in)',
-          'Accept': 'application/rss+xml, application/xml, text/xml',
-        },
-      });
-      const articles = this._parseRSSXml(response.data, 'Google News', '');
+      const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+      const xmlData = await this._fetchWithHttps(url, userAgent);
+      const articles = this._parseRSSXml(xmlData, 'Google News', '');
       console.log(`[Research] Google News RSS: ${articles.length} articles for "${query}"`);
       return articles.slice(0, 15);
     } catch (err) {
@@ -177,6 +215,11 @@ class ResearchService {
   async fetchFromIndianFinanceRSS(query) {
     const FEEDS = [
       { url: 'https://www.moneycontrol.com/rss/latestnews.xml', name: 'Moneycontrol' },
+      { url: 'https://www.moneycontrol.com/rss/business.xml', name: 'Moneycontrol Business' },
+      { url: 'https://www.moneycontrol.com/rss/economy.xml', name: 'Moneycontrol Economy' },
+      { url: 'https://economictimes.indiatimes.com/rssfeedstopstories.cms', name: 'Economic Times' },
+      { url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', name: 'ET Markets' },
+      { url: 'https://economictimes.indiatimes.com/industry/rssfeeds/13352306.cms', name: 'ET Industry' },
       { url: 'https://www.business-standard.com/rss/home_page_top_stories.rss', name: 'Business Standard' },
       { url: 'https://www.livemint.com/rss/news', name: 'Live Mint' },
       { url: 'https://www.financialexpress.com/feed/', name: 'Financial Express' },
@@ -185,15 +228,13 @@ class ResearchService {
 
     const keyword = query;
     const allArticles = [];
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
     await Promise.allSettled(
       FEEDS.map(async ({ url, name }) => {
         try {
-          const response = await axios.get(url, {
-            timeout: 7000,
-            headers: { 'User-Agent': 'CreditForge/2.0' },
-          });
-          const articles = this._parseRSSXml(response.data, name, keyword);
+          const xmlData = await this._fetchWithHttps(url, userAgent);
+          const articles = this._parseRSSXml(xmlData, name, keyword);
           allArticles.push(...articles);
         } catch (_) {
           // Individual feed failure doesn't block others
@@ -216,14 +257,12 @@ class ResearchService {
     ];
     const keyword = query.toLowerCase();
     const articles = [];
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
     for (const feedUrl of RSS_FEEDS) {
       try {
-        const response = await axios.get(feedUrl, {
-          timeout: 6000,
-          headers: { 'User-Agent': 'CreditForge/2.0' },
-        });
-        articles.push(...this._parseRSSXml(response.data, 'Economic Times', keyword));
+        const xmlData = await this._fetchWithHttps(feedUrl, userAgent);
+        articles.push(...this._parseRSSXml(xmlData, 'Economic Times', keyword));
       } catch (err) {
         console.warn('[Research] ET RSS error:', feedUrl, err.message);
       }
@@ -296,8 +335,10 @@ class ResearchService {
    *  2. Indian Finance RSS (free, unlimited) — fired in parallel with #1
    *  3. Paid APIs (Currents, NewsData) — only if above returned < 5 articles
    *  4. GNews / ET RSS — last resort
+   * @param {string} query
+   * @param {boolean} isFuzzy - whether this is a fallback broader query
    */
-  async fetchNews(query) {
+  async fetchNews(query, isFuzzy = false) {
     // Always fire both free unlimited sources in parallel
     const [googleArticles, indianArticles] = await Promise.all([
       this.fetchFromGoogleNews(query),
@@ -316,13 +357,28 @@ class ResearchService {
     }
 
     // Legacy fallbacks
-    if (articles.length === 0) articles = await this.fetchFromGNews(query);
     if (articles.length === 0) articles = await this.fetchFromRSS(query);
 
+    // If still 0 and not already fuzzy, try a broader search (e.g., "UrbanInfra Developers" -> "UrbanInfra")
+    if (articles.length === 0 && !isFuzzy) {
+      const parts = query.split(' ');
+      if (parts.length > 1) {
+        const broader = parts[0];
+        console.log(`[Research] 0 results for "${query}". Retrying fuzzy: "${broader}"`);
+        return this.fetchNews(broader, true);
+      }
+    }
+
     // Deduplicate by title
-    return articles.filter((a, idx, self) =>
+    const results = articles.filter((a, idx, self) =>
       self.findIndex((o) => o.title === a.title) === idx
     );
+
+    // Tag the articles with their relevance type
+    return results.map(a => ({
+      ...a,
+      tag: isFuzzy ? 'RELATED' : 'DIRECT'
+    }));
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
@@ -454,7 +510,15 @@ class ResearchService {
 
   extractPromoterNames(documents = []) {
     const names = new Set();
-    const patterns = [/(?:director|promoter|md|ceo|chairman|managing director)[:\s]+([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,3})/g];
+    const patterns = [
+      // Standard: Label followed by Name (e.g., "Director: John Doe")
+      /(?:director|promoter|md|ceo|chairman|managing director)(?:\s+of\s+the\s+company)?\s*[:\-]\s*(?:Mr\.|Ms\.|Mrs\.)?\s*([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,3})/gi,
+      // Narrative: "is Mr. Name" or similar phrasing
+      /(?:director|promoter|md|ceo|chairman|managing director)(?:\s+of\s+the\s+company)?\s+(?:is|named|is\s+Mr\.|is\s+Ms\.|is\s+Mrs\.)\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,3})/gi,
+      // Generic: Just name after title without colon
+      /(?:director|promoter|md|ceo|chairman|managing director)\s+(?:Mr\.|Ms\.|Mrs\.)?\s*([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,3})/gi
+    ];
+
     for (const doc of documents) {
       const text = doc.extractedData?.extractedText || '';
       for (const pattern of patterns) {
@@ -462,12 +526,17 @@ class ResearchService {
         let m;
         while ((m = pattern.exec(text)) !== null) {
           const name = m[1].trim();
-          if (name.length > 4) names.add(name);
+          // Filter out generic words that might match capitalized pattern
+          if (name.length > 4 && !['The ', 'This ', 'From ', 'With '].some(w => name.startsWith(w))) {
+            names.add(name);
+          }
           if (names.size >= 3) break;
         }
       }
     }
-    return [...names];
+    const finalNames = [...names];
+    console.log(`[Research] Extracted promoter names: ${finalNames.length > 0 ? finalNames.join(', ') : 'None'}`);
+    return finalNames;
   }
 
   generateExecutiveSummary(allArticles, classified, sentiment, riskAnalysis, companyName, sector) {
@@ -508,7 +577,7 @@ class ResearchService {
       await Promise.all([
         this.fetchNews(companyName),
         promoterNames.length > 0 ? this.fetchNews(`${promoterNames[0]} ${companyName}`) : Promise.resolve([]),
-        sectorQuery ? this.fetchNews(sectorQuery) : Promise.resolve([]),
+        sectorQuery ? this.fetchNews(sectorQuery).then(results => results.map(a => ({ ...a, tag: 'INDUSTRY' }))) : Promise.resolve([]),
         this.fetchNews(`"${companyName}" court case lawsuit NCLT`),
         this.checkMCADirectors(cin),
       ]);
@@ -545,15 +614,15 @@ class ResearchService {
       regulatoryDetails: classified.regulatory,
       directorIssues: classified.directorIssues.length,
       directorDetails: classified.directorIssues,
-      negativeNews: classified.negativeNews.length,
-      newsDetails: classified.negativeNews,
-      allArticles: allArticles.slice(0, 30), // all fetched articles for display
-      overallSentiment: sentiment.label,
+      allArticles,
       sentimentScore: sentiment.score,
+      overallSentiment: sentiment.label,
       riskKeywords: riskAnalysis.keywordCounts,
+      riskScore: riskAnalysis.totalRiskScore,
       sources,
       executiveSummary: executiveSummary + sectorContext,
       redFlags,
+      serviceNote: allArticles.length === 0 ? "No material negative news discovered in current top business feeds. For historical deep-search of private entities, please configure a News API key." : null,
     };
   }
 }

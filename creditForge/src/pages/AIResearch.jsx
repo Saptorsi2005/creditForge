@@ -204,15 +204,29 @@ export default function AIResearch() {
                                     const isPos = ['profit', 'growth', 'award', 'expansion', 'record', 'win', 'strong', 'upgrade'].some(w => text.includes(w));
                                     const border = isNeg ? 'border-red-500/30 bg-red-500/5' : isPos ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-700/50 bg-slate-800/30';
                                     const dot = isNeg ? 'bg-red-400' : isPos ? 'bg-emerald-400' : 'bg-slate-500';
+
+                                    // Tag-based relevance styling
+                                    const tagLabel = article.tag === 'DIRECT' ? 'Direct Match' : article.tag === 'RELATED' ? 'Related' : article.tag === 'INDUSTRY' ? 'Industry Context' : null;
+                                    const tagColor = article.tag === 'DIRECT' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                                        article.tag === 'RELATED' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                                            'bg-slate-700/50 text-slate-400 border-slate-600/50';
+
                                     return (
                                         <div key={idx} className={`p-3.5 rounded-xl border ${border} hover:opacity-90 transition-opacity`}>
                                             <div className="flex items-start gap-2.5">
                                                 <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${dot}`} />
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-start justify-between gap-2">
-                                                        <p className="text-sm text-slate-200 font-medium leading-snug">
-                                                            {article.title || article.headline}
-                                                        </p>
+                                                        <div className="flex flex-col gap-1">
+                                                            <p className="text-sm text-slate-200 font-medium leading-snug">
+                                                                {article.title || article.headline}
+                                                            </p>
+                                                            {tagLabel && (
+                                                                <span className={`inline-flex items-center w-fit px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${tagColor}`}>
+                                                                    {tagLabel}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         {(article.url) && (
                                                             <a href={article.url} target="_blank" rel="noopener noreferrer"
                                                                 className="text-brand-blue hover:text-blue-400 shrink-0 mt-0.5">
@@ -309,7 +323,7 @@ export default function AIResearch() {
                                         <div className="p-4 bg-slate-800/10">
                                             <div className="flex items-start gap-3">
                                                 <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-                                                <p className="text-sm text-slate-200">{item.details || item.description}</p>
+                                                <p className="text-sm text-slate-200">{stripHtml(item.details || item.description)}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -325,17 +339,32 @@ export default function AIResearch() {
                                 <AlertTriangle className="h-5 w-5 text-brand-yellow" />
                                 Regulatory Concerns ({regulatory.length})
                             </h2>
-                            <div className="space-y-3">
+                            <div className="space-y-4">
                                 {regulatory.map((item, idx) => (
-                                    <div key={idx} className="p-4 rounded-xl border border-brand-yellow/20 bg-brand-yellow/5">
-                                        <p className="text-sm font-medium text-brand-yellow">{item.type}</p>
-                                        <p className="text-xs text-slate-400 mt-1">{item.headline}</p>
-                                        <p className="text-sm text-slate-200 mt-2">{item.description}</p>
-                                        {item.url && (
-                                            <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-blue hover:underline mt-1 inline-block">
-                                                Source →
-                                            </a>
-                                        )}
+                                    <div key={idx} className="p-5 rounded-xl border border-slate-700/50 bg-slate-800/20 relative">
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-yellow rounded-l-xl" />
+                                        <div className="flex justify-between items-center mb-3 pl-2">
+                                            <span className="text-xs font-bold text-slate-300 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-700">
+                                                {item.type || 'Regulatory'}
+                                            </span>
+                                            <span className="text-xs font-medium px-2.5 py-1 rounded bg-slate-800 text-brand-yellow border border-slate-700">
+                                                {item.status || 'Active'}
+                                            </span>
+                                        </div>
+                                        <div className="pl-2 min-w-0 overflow-hidden">
+                                            <p className="text-xs text-slate-400 font-medium mb-1 break-words">
+                                                {item.headline}
+                                            </p>
+                                            <p className="text-sm text-slate-200 leading-relaxed break-words line-clamp-3">
+                                                {stripHtml(item.description)}
+                                            </p>
+                                            {item.url && (
+                                                <a href={item.url} target="_blank" rel="noopener noreferrer"
+                                                    className="text-xs text-brand-blue hover:underline mt-2 inline-flex items-center gap-1">
+                                                    Source <ExternalLink className="h-3 w-3" />
+                                                </a>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
