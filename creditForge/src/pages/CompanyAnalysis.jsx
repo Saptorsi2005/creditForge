@@ -335,6 +335,43 @@ function EditFinancialsModal({ analysis, onClose, onSave, saving, onReset, reset
                             </div>
                         </div>
                     )}
+
+                    {/* ── Data Ingestor: Unstructured Metrics Audit ── */}
+                    {(analysis?.contingentLiabilities > 0 || analysis?.financialOverrides?.contingentLiabilities > 0 || analysis?.sanctionedLimits > 0) && (
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm overflow-hidden relative">
+                            <h2 className="text-lg font-semibold text-white mb-5 flex items-center gap-2">
+                                <Activity className="h-5 w-5 text-emerald-400" />
+                                Data Ingestor: Unstructured Audit
+                                <span className="ml-2 text-[10px] px-2 py-0.5 bg-slate-800 text-slate-400 border border-slate-700 rounded-full font-bold uppercase tracking-widest">Auto-Extracted</span>
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="p-4 bg-slate-950/50 rounded-xl border border-slate-800">
+                                    <p className="text-xs font-bold text-slate-500 uppercase mb-2">Contingent Liabilities</p>
+                                    <p className="text-xl font-bold text-white">
+                                        {fmtCr(analysis?.contingentLiabilities || analysis?.financialOverrides?.contingentLiabilities)}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Guarantees & Letters of Credit</p>
+                                </div>
+                                <div className="p-4 bg-slate-950/50 rounded-xl border border-slate-800">
+                                    <p className="text-xs font-bold text-slate-500 uppercase mb-2">Financial Commitments</p>
+                                    <p className="text-xl font-bold text-white">
+                                        {fmtCr(analysis?.financialCommitments || analysis?.financialOverrides?.financialCommitments)}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Capital contracts in progress</p>
+                                </div>
+                                <div className="p-4 bg-slate-950/50 rounded-xl border border-slate-800">
+                                    <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Sanctioned Limits</p>
+                                    <p className="text-xl font-bold text-white">
+                                        {fmtCr(analysis?.sanctionedLimits || analysis?.financialOverrides?.sanctionedLimits)}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Existing banking facilities</p>
+                                </div>
+                            </div>
+                            <p className="mt-4 text-xs text-slate-500 italic">
+                                * These values were extracted using NLP from complex text blocks in annual reports and sanction letters.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

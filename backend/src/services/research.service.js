@@ -407,6 +407,37 @@ class ResearchService {
     return findings;
   }
 
+  /**
+   * MCA Indebtedness Check (Best-Effort)
+   * Specifically looks for "Charges" or "Lien" registered with MCA.
+   */
+  async checkMCACharges(cin) {
+    if (!cin) return [];
+    const findings = [];
+    try {
+      // Note: In a real prod environment, this would call a paid MCA API aggregator like Probe42 or Tofler.
+      // For this implementation, we simulate the scraping logic for the "Charges" tab content.
+      const url = `https://www.mca.gov.in/mcafoportal/viewIndexCharges.do`;
+      const userAgent = 'CreditForge/2.0';
+
+      // Simulate fetch and search for "Charge" rows
+      const response = await axios.get(url, { params: { companyID: cin }, timeout: 6000, headers: { 'User-Agent': userAgent } });
+      const text = JSON.stringify(response.data || '').toLowerCase();
+
+      if (text.includes('charge holder') || text.includes('amount of charge')) {
+        findings.push({
+          source: 'MCA Charges Registry',
+          type: 'Existing Lien Detected',
+          severity: 'MEDIUM',
+          description: 'Company has existing charges registered with other financial institutions. Priority status should be verified.',
+        });
+      }
+    } catch (err) {
+      console.warn('[Research] MCA Charges check skipped:', err.message);
+    }
+    return findings;
+  }
+
   // ══════════════════════════════════════════════════════════════════════════════
   // TEXT ANALYSIS
   // ══════════════════════════════════════════════════════════════════════════════
@@ -573,16 +604,17 @@ class ResearchService {
     const sectorQuery = sector ? (this.sectorHeadwindMap[sector] || `${sector} India sector 2025`) : null;
 
     // Fire all queries in parallel
-    const [companyArticles, promoterArticles, sectorArticles, litigationArticles, mcaFindings] =
+    const [companyArticles, promoterArticles, sectorArticles, litigationArticles, mcaFindings, mcaCharges] =
       await Promise.all([
         this.fetchNews(companyName),
         promoterNames.length > 0 ? this.fetchNews(`${promoterNames[0]} ${companyName}`) : Promise.resolve([]),
         sectorQuery ? this.fetchNews(sectorQuery).then(results => results.map(a => ({ ...a, tag: 'INDUSTRY' }))) : Promise.resolve([]),
         this.fetchNews(`"${companyName}" court case lawsuit NCLT`),
         this.checkMCADirectors(cin),
+        this.checkMCACharges(cin),
       ]);
 
-    console.log(`[Research] Results — Company: ${companyArticles.length}, Promoter: ${promoterArticles.length}, Sector: ${sectorArticles.length}, Litigation: ${litigationArticles.length}`);
+    console.log(`[Research] Results — Company: ${companyArticles.length}, Promoter: ${promoterArticles.length}, Sector: ${sectorArticles.length}, Litigation: ${litigationArticles.length}, MCA Findings: ${mcaFindings.length + mcaCharges.length}`);
 
     // Merge company + promoter + litigation articles (deduplicated)
     const allArticles = [...companyArticles, ...promoterArticles, ...litigationArticles]
@@ -593,11 +625,14 @@ class ResearchService {
     const riskAnalysis = this.analyzeRiskKeywords(corpus);
     const sentiment = this.analyzeSentiment(corpus);
     const classified = this.classifyArticles(allArticles);
-    const redFlags = this.identifyRedFlags(riskAnalysis, sentiment, classified.litigation, mcaFindings);
+
+    // Combine all external intelligence findings
+    const combinedFindings = [...mcaFindings, ...mcaCharges];
+    const redFlags = this.identifyRedFlags(riskAnalysis, sentiment, classified.litigation, combinedFindings);
 
     const sourceSet = new Set([
       ...allArticles.map((a) => a.source || a.url),
-      ...(mcaFindings.length > 0 ? ['MCA21 Public Registry'] : []),
+      ...(combinedFindings.length > 0 ? ['MCA21 Public Registry'] : []),
     ]);
     const sources = [...sourceSet].slice(0, 15);
 

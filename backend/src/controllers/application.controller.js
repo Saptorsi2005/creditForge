@@ -259,6 +259,11 @@ const uploadDocuments = async (req, res, next) => {
               debtToEquity: fd.debtToEquity ?? null,
               currentRatio: fd.currentRatio ?? null,
               multiYearRevenue: fd.multiYearRevenue ?? null,
+              financialOverrides: {
+                contingentLiabilities: fd.contingentLiabilities ?? 0,
+                financialCommitments: fd.financialCommitments ?? 0,
+                sanctionedLimits: fd.sanctionedLimits ?? 0,
+              }
             };
             await tx.companyAnalysis.upsert({
               where: { applicationId: id },

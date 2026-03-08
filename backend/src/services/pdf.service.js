@@ -274,6 +274,22 @@ class PDFService {
       'total current liabilities', 'current liabilities',
     ]);
 
+    // ── Step 3.5: Unstructured / Off-Balance Sheet Items ──────────────────
+    const contingentLiabilities = this._extractValue(text, [
+      'contingent liabilities', 'guarantees given', 'letter of credit',
+      'claims against the company not acknowledged as debt',
+    ]);
+
+    const financialCommitments = this._extractValue(text, [
+      'capital commitments', 'estimated amount of contracts remaining to be executed',
+      'other commitments',
+    ]);
+
+    const sanctionedLimits = this._extractValue(text, [
+      'sanctioned limit', 'working capital limit', 'cc limit', 'od limit',
+      'sanctioned facility', 'facility limit',
+    ]);
+
     // ── Step 4: Revenue growth ────────────────────────────────────────────
     let revenueGrowth = null;
     if (multiYearArray.length >= 2) {
@@ -317,6 +333,9 @@ class PDFService {
       currentLiabilities,
       debtToEquity,
       currentRatio,
+      contingentLiabilities,
+      financialCommitments,
+      sanctionedLimits,
       multiYearRevenue,   // array or null
     };
 
@@ -330,6 +349,8 @@ class PDFService {
       totalDebt,
       netWorth,
       debtToEquity,
+      contingentLiabilities,
+      sanctionedLimits,
       multiYearYears: multiYearArray.map((r) => r.year),
     }, null, 2));
 

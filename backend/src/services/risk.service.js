@@ -550,7 +550,62 @@ class RiskService {
       });
     }
 
+    // Advanced Data Ingestor: Circular Trading & Off-Balance Sheet
+    const circularTradingAlert = this.detectCircularTrading(companyAnalysis);
+    if (circularTradingAlert) {
+      deductions.push(circularTradingAlert);
+    }
+
+    const offBalanceSheetRisk = this.analyzeOffBalanceSheetRisk(companyAnalysis);
+    if (offBalanceSheetRisk) {
+      deductions.push(offBalanceSheetRisk);
+    }
+
     return deductions;
+  }
+
+  /**
+   * Data Ingestor Intelligence: Circular Trading Detection
+   */
+  detectCircularTrading(analysis) {
+    if (!analysis) return null;
+    const gstRev = analysis.gstRevenue || 0;
+    const bankRev = analysis.bankRevenue || 0;
+    if (gstRev > 0 && bankRev > 0) {
+      const mismatch = Math.abs(gstRev - bankRev) / Math.max(gstRev, bankRev);
+      if (mismatch > 0.3) {
+        return {
+          factor: 'Circular Trading Alert',
+          points: 25,
+          reason: `Critical mismatch (${(mismatch * 100).toFixed(1)}%) between GST filings and Bank credits suggests potential revenue inflation.`
+        };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Data Ingestor Intelligence: Off-Balance Sheet Assessment
+   */
+  analyzeOffBalanceSheetRisk(analysis) {
+    if (!analysis) return null;
+
+    // Check top level or financialOverrides JSON block
+    const overrides = analysis.financialOverrides || {};
+    const contingent = analysis.contingentLiabilities || overrides.contingentLiabilities || 0;
+    const commitments = analysis.financialCommitments || overrides.financialCommitments || 0;
+    const sanctioned = analysis.sanctionedLimits || overrides.sanctionedLimits || 0;
+
+    const revenue = analysis.revenue || 1;
+
+    if (contingent > (revenue * 0.5)) {
+      return {
+        factor: 'High Contingent Liability',
+        points: 20,
+        reason: `Off-balance sheet guarantees (₹${(contingent / 10000000).toFixed(2)} Cr) exceed 50% of annual revenue.`
+      };
+    }
+    return null;
   }
 
   /**
