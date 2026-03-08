@@ -16,7 +16,9 @@ function fmt(v, unit = '') {
 }
 function fmtCr(v) {
     if (v == null) return '—';
-    return `₹ ${fmt(v)} Cr`;
+    // Convert rupees to crores (1 Cr = 10,000,000)
+    const inCrores = v / 10000000;
+    return `₹ ${fmt(inCrores)} Cr`;
 }
 
 export default function CAMReport() {

@@ -1,6 +1,7 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const { formatCurrencyINR, formatNumber } = require('../utils/currencyFormatter');
 
 /**
  * CAM (Credit Assessment Memorandum) Generator
@@ -90,17 +91,10 @@ class CAMService {
 
   /**
    * Helper to format numbers with commas and fixed decimals
+   * @deprecated Use formatNumber from currencyFormatter utility instead
    */
   formatCurrency(value, decimals = 2) {
-    if (value === null || value === undefined) return '0.00';
-    try {
-      return Number(value).toLocaleString('en-IN', {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals
-      });
-    } catch (e) {
-      return Number(value).toFixed(decimals);
-    }
+    return formatNumber(value, decimals);
   }
 
   /**
